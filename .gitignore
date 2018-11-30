@@ -1,0 +1,9 @@
+*.zip
+*.pdf
+*.py
+*.csv
+*./semana2
+* /.ipynb_checkpoints
+*.pkl
+*/Tarea3-Redes-Neuronales
+*.ipynb_checkpoints/
