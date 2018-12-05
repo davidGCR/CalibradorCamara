@@ -151,7 +151,9 @@ int main()
         Mat drawing = Mat::zeros( detected_edges.size(), CV_8UC3 );
         RNG rng(12345);
 
-        for( int i = 0; i < 41; i++ )
+        //cout << contours2.size() << endl;
+
+        for( int i = 0; i < contours2.size(); i++ )
         {
             Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
             drawContours( drawing, contours2, i, color, 2, 8, hierarchy, 0, Point() );
