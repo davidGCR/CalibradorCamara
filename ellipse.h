@@ -24,6 +24,7 @@ public:
     float distance(P_Ellipse);
     float radio;
     Point2f center();
+     
     
 
 };

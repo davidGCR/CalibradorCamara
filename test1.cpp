@@ -118,7 +118,7 @@ int main( int argc, char** argv )
 
 int main()
 {
-    VideoCapture cap("data/PadronAnillos_03.avi");
+    VideoCapture cap("data/PadronAnillos_01.avi");
     if ( !cap.isOpened() )
     {
         cout << "Cannot open the video file. \n";
