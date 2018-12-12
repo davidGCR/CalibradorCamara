@@ -359,10 +359,12 @@ void preprocessing_frame(Mat* frame, Mat* frame_output){
     Mat blur;
     Mat frame_gray;
     Mat frame_thresholding;
+    //namedWindow("New frame", 1 );
     cvtColor( *frame,frame_gray, COLOR_BGR2GRAY );
     GaussianBlur( frame_gray, blur, Size(5,5),0 );
     //threshold(src_gray,detected_edges,0,255,THRESH_BINARY+THRESH_OTSU);
     adaptiveThreshold(frame_gray, frame_thresholding, 255, ADAPTIVE_THRESH_GAUSSIAN_C,CV_THRESH_BINARY,125,20);
+   //imshow("New frame",frame_thresholding);
     (*frame_output) = frame_thresholding;
     // cout<<"preprocesada: "<<frame_thresholding.size<<endl;
 }
