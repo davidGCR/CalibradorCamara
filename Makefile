@@ -1,2 +1,2 @@
 all:
-	g++ -ggdb test1.cpp -o main `pkg-config --cflags --libs opencv`
+	g++ -ggdb main.cpp -o main `pkg-config --cflags --libs opencv`
