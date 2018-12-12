@@ -9,6 +9,10 @@
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
+#include <chrono>
+#include <stdio.h>
+#include <stdarg.h>
+#include <string>
 
 #include "ellipse.h"
 //#include <cv.h>
@@ -26,7 +30,9 @@ const int COL_CTRL_PTS = 4;
 const int REAL_NUM_CTRL_PTS = ROWS_CTRL_PTS * COL_CTRL_PTS;
 
 Mat src, src_gray;
+Mat img_circles;
 Mat dst, detected_edges;
+auto duration = 0;
 
 int lowThreshold = 10;
 const int max_lowThreshold = 100;
@@ -88,6 +94,10 @@ void find_ellipses(Mat* img_preprocessing, Mat* img_out, int* n_fails, vector<P_
 //            cout<<"*"<<ct<<endl;
         }
     }
+
+    img_circles = img_out->clone();
+
+
     int count = 0;
     float distance = 0;
     for(int i=0;i<p_ellipses.size();i++){
@@ -112,7 +122,7 @@ void find_ellipses(Mat* img_preprocessing, Mat* img_out, int* n_fails, vector<P_
         (*n_fails)++;
     }
     if (p_ellipses_f1.size()==REAL_NUM_CTRL_PTS) {
-        cout<<"# entrooooooo: "<<endl;
+        //cout<<"# entrooooooo: "<<endl;
         track_points((*img_out),p_ellipses_f1,control_points);
     }
 //    int menor=0, mayor=0;
@@ -197,13 +207,13 @@ void track_points(Mat& frame, vector<P_Ellipse>& p_ellipses_f1, vector<P_Ellipse
     vector<P_Ellipse> limit_points;
     int rows = 0;
 
-    cout << "Pattern Traking" << endl;
-    cout<<"# vector 1: "<<control_points.size()<<", vector 2: "<<p_ellipses_f1.size()<<endl;
+    //cout << "Pattern Traking" << endl;
+    //cout<<"# vector 1: "<<control_points.size()<<", vector 2: "<<p_ellipses_f1.size()<<endl;
 
 RNG rng(12345);
 
     if (control_points.size() == 0) {
-        cout << "Pattern Traking fase 11111" << endl;
+        //cout << "Pattern Traking fase 11111" << endl;
         
         size_centers = p_ellipses_f1.size(); //copiar centros de fase 1
 
@@ -232,7 +242,7 @@ RNG rng(12345);
                         // Scalar random_color = Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
 
                         line(frame, ellipses_in_line[0].center(), ellipses_in_line[ ellipses_in_line.size()-1].center(), yellow, 2);
-                        cout<<"puntos en recta: "<< ellipses_in_line.size()<<", asumo que son: "<<ROWS_CTRL_PTS<<endl;
+                        //cout<<"puntos en recta: "<< ellipses_in_line.size()<<", asumo que son: "<<ROWS_CTRL_PTS<<endl;
                         
                         for(int o=0;o<p_ellipses_f1.size();o++){
                             circle(frame, p_ellipses_f1[o].center(), 2, white, 5);
@@ -247,7 +257,7 @@ RNG rng(12345);
                             //ordenar los puntos de una recta con respecto al eje Y
                             sort(ellipses_in_line.begin(), ellipses_in_line.end(), sort_ellipses_by_y);
                             line(frame, ellipses_in_line[0].center(), ellipses_in_line[ ellipses_in_line.size()-1].center(), black, 2);
-                            cout<<"puntos en recta2222: "<< ellipses_in_line.size()<<endl;
+                            //cout<<"puntos en recta2222: "<< ellipses_in_line.size()<<endl;
                             
                             for(int o=0;o<p_ellipses_f1.size();o++){
                                 circle(frame, p_ellipses_f1[o].center(), 2, black, 5);
@@ -263,7 +273,7 @@ RNG rng(12345);
                             //verificar que la  recta encontrada no fue identificada antes
                             if (limit_points[l].x == ellipses_in_line[0].x && limit_points[l].y == ellipses_in_line[0].y) {
                                 found = true;
-                                cout<<"found: "<<found<<endl;
+                                //cout<<"found: "<<found<<endl;
                             }
                         }
 
@@ -277,9 +287,9 @@ RNG rng(12345);
                             limit_points.push_back(ellipses_in_line[0]);
                             limit_points.push_back(ellipses_in_line[ROWS_CTRL_PTS-1]);
                         }
-                        else{
+                       /* else{
                             cout<<"no entroooooooo..."<<endl;
-                        }
+                        }*/
                     }
                 }
             }
@@ -357,9 +367,101 @@ void preprocessing_frame(Mat* frame, Mat* frame_output){
     // cout<<"preprocesada: "<<frame_thresholding.size<<endl;
 }
 
+void ShowManyImages(string title, int n_fails, int total_frames, int nArgs, ...) {
+    int size;
+    int i;
+    int m, n;
+    int x, y;
+
+    int w, h;
+
+    float scale;
+    int max;
+
+    if(nArgs <= 0) {
+        printf("Number of arguments too small....\n");
+        return;
+    }
+    else if(nArgs > 14) {
+        printf("Number of arguments too large, can only handle maximally 12 images at a time ...\n");
+        return;
+    }
+    else if (nArgs == 1) {
+        w = h = 1;
+        size = 400;
+    }
+    else if (nArgs == 2) {
+        w = 2; h = 1;
+        size = 400;
+    }
+    else if (nArgs == 3 || nArgs == 4) {
+        w = 2; h = 2;
+        size = 400;
+    }
+    else if (nArgs == 5 || nArgs == 6) {
+        w = 3; h = 2;
+        size = 200;
+    }
+    else if (nArgs == 7 || nArgs == 8) {
+        w = 4; h = 2;
+        size = 200;
+    }
+    else {
+        w = 4; h = 3;
+        size = 150;
+    }
+
+
+    Mat DispImage = Mat::zeros(Size(100 + size*w, size*h), CV_8UC3);
+
+    va_list args;
+    va_start(args, nArgs);
+
+    for (i = 0, m = 20, n = 120; i < nArgs; i++, m += (20 + size)) {
+
+        Mat img = va_arg(args, Mat);
+
+        if(img.empty()) {
+            printf("Invalid arguments");
+            return;
+        }
+
+        x = img.cols;
+        y = img.rows;
+
+        max = (x > y)? x: y;
+
+        scale = (float) ( (float) max / size );
+
+        if( i % w == 0 && m!= 20) {
+            m = 20;
+            n+= 20 + size-80;
+        }
+
+        
+        Rect ROI(m, n, (int)( x/scale ), (int)( y/scale ));
+        Mat temp; resize(img,temp, Size(ROI.width, ROI.height));
+        temp.copyTo(DispImage(ROI));
+    }
+
+    namedWindow( title, 1 );
+    putText(DispImage, "CAMERA CALIBRATION", Point2f(250,50), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,200), 2 , 8 , false);
+    putText(DispImage, "Original Frame", Point2f(100,90), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+    putText(DispImage, "Preprocessed Frame", Point2f(500,90), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+    putText(DispImage, "Pattern Detected", Point2f(100,450), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+    putText(DispImage, "Order Centers", Point2f(500,450), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+    putText(DispImage, "Time: "+(to_string((float)duration/(float)total_frames)), Point2f(80,790), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+    putText(DispImage, "Fails: "+to_string(n_fails)+" of: "+to_string(total_frames), Point2f(500,790), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+
+    //string a = to_string(countimages);
+    imshow( title, DispImage);
+
+    va_end(args);
+}
+
 int main()
 {
-    string path_data = "/home/david/Escritorio/calib-data/";
+    string path_data = "data/";
 //    Mat img = imread(path_data+"padron1.png",CV_LOAD_IMAGE_COLOR);
 //    imshow("Original",img);
 //
@@ -382,7 +484,9 @@ int main()
     namedWindow("resultado",CV_WINDOW_AUTOSIZE);
     int total_frames=0;
     int n_fails = 0;
+
     while (1) {
+
         Mat frame;
         cap>>frame;
         if (frame.empty()) {
@@ -391,11 +495,18 @@ int main()
         }
         total_frames++;
         Mat frame_preprocessed;
+        auto t11 = std::chrono::high_resolution_clock::now();
         preprocessing_frame(&frame, &frame_preprocessed);
         //    imshow("Pre-procesada",img_preprocessed);
         Mat img_ellipses = frame.clone();
         find_ellipses(&frame_preprocessed, &img_ellipses,&n_fails,control_points);
-        imshow("resultado",img_ellipses);
+        auto t12 = std::chrono::high_resolution_clock::now();
+        duration += std::chrono::duration_cast<std::chrono::milliseconds>(t12 - t11).count();
+
+
+        cvtColor(frame_preprocessed,frame_preprocessed, COLOR_GRAY2RGB);
+        //imshow("other",frame_preprocessed);
+        ShowManyImages("resultado", n_fails, total_frames, 4, frame, frame_preprocessed, img_circles, img_ellipses);
     
         if(waitKey(2) == 27)
         {
@@ -403,6 +514,7 @@ int main()
         }
     }
     
-    cout<<"# fails: "<<n_fails<<" of "<<total_frames<<endl;
+    cout<<"# fails: "<<n_fails<<" of: "<<total_frames<<endl;
+    cout<<"# frames: "<<total_frames<<" time: "<<duration<<endl;
     return 0;
 }
