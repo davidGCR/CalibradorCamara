@@ -12,7 +12,7 @@ class P_Ellipse
 private:
     
     
-
+    
 public:
     P_Ellipse();
     P_Ellipse(float,float,float);
@@ -24,9 +24,11 @@ public:
     float distance(P_Ellipse);
     float radio;
     Point2f center();
-     
+    RotatedRect fit_ellipse;
     
-
+    
+    
 };
 
 #endif // ELLIPSE_H
+

@@ -2,7 +2,7 @@
 
 P_Ellipse::P_Ellipse()
 {
-
+    
 }
 
 P_Ellipse::P_Ellipse(float cx,float cy, float r):x(cx),y(cy),radio(r){}
