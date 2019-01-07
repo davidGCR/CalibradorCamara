@@ -28,8 +28,8 @@ const int  IDX_SON = 2; //indice del hijo en jerarquia
 const int  IDX_FATHER = 3; //indice del padre en jerarquia
 const float  DST_2_ELLIPS = 5;
 const int NUM_NEAR_ELLIPS = 2;
-const int ROWS_CTRL_PTS = 4;
-const int COL_CTRL_PTS = 3;
+const int ROWS_CTRL_PTS = 5;
+const int COL_CTRL_PTS = 4;
 const int REAL_NUM_CTRL_PTS = ROWS_CTRL_PTS * COL_CTRL_PTS;
 const float TRACK_THRESHOLD = 10;
 
@@ -99,12 +99,23 @@ void find_ellipses(Mat* img_preprocessing, Mat* img_out, int* n_fails, vector<P_
     float distance = 0;
     for(int i=0;i<p_ellipses.size();i++){ //filtrar ellipses por distancias
         int count = 0;
-        if(*n_fails == 2)cout << "points: " << p_ellipses[i].x << " "<<p_ellipses[i].y << " "<< p_ellipses[i].radio<<endl;
+        //cout << "points: " << p_ellipses[i].x << " "<<p_ellipses[i].y << " "<< p_ellipses[i].radio<<endl;
         for (int j=0; j<p_ellipses.size(); j++) {
             if(i!=j){
                 distance = p_ellipses[i].distance(p_ellipses[j]);
+
+                double medirDistancia;
+
+                if(p_ellipses[j].radio > p_ellipses[i].radio)
+                {
+                    medirDistancia = p_ellipses[i].radio;
+                }
+                else
+                {
+                    medirDistancia = p_ellipses[j].radio;
+                }
                 
-                if (distance < DST_2_ELLIPS*p_ellipses[i].radio) {
+                if (distance < DST_2_ELLIPS*medirDistancia) {
                         //cout<< "i: " << i << " j: " <<j<<" distance: "<<distance << " radio: " << p_ellipses[j].radio<<endl;
                     count++;
                     //                    cv::line((*img_out), p_ellipses[i].center(), p_ellipses[j].center(), blue,2);
@@ -116,6 +127,10 @@ void find_ellipses(Mat* img_preprocessing, Mat* img_out, int* n_fails, vector<P_
             
             //cout<<"raius: "<<pp_control_points[i].radio<<endl;
             //            cv::circle((*img_out), p_ellipses[i].center(), p_ellipses[i].radio, green,2);
+        }
+        else
+        {
+            p_ellipses.erase(p_ellipses.begin()+i--);
         }
     }
 
@@ -643,7 +658,7 @@ int main()
     vector<P_Ellipse> control_points;
     
     VideoCapture cap;
-    cap.open(path_data+"padron1.avi");
+    cap.open(path_data+"padron2.avi");
     if ( !cap.isOpened() ){
         cout << "Cannot open the video file. \n";
         return -1;
@@ -665,12 +680,14 @@ int main()
         frame_time = cap.get(CV_CAP_PROP_POS_MSEC)/1000;
         //time_t a = frame_time;
         //cout<<"time: "<<frame_time<<endl;
-        cout << total_frames << endl;
+        //cout << total_frames << endl;
         Mat frame_preprocessed;
         auto t11 = std::chrono::high_resolution_clock::now();
         preprocessing_frame(&frame, &frame_preprocessed);
         //    imshow("Pre-procesada",img_preprocessed);
         Mat img_ellipses = frame.clone();
+
+        //if(total_frames == 3100)//44
         find_ellipses(&frame_preprocessed, &img_ellipses,&n_fails,control_points,frame_time);
         auto t12 = std::chrono::high_resolution_clock::now();
         duration += std::chrono::duration_cast<std::chrono::milliseconds>(t12 - t11).count();
@@ -679,7 +696,7 @@ int main()
         //cvtColor(frame_preprocessed,frame_preprocessed, COLOR_GRAY2RGB);
         //imshow("other",frame_preprocessed);
         //ShowManyImages("resultado", n_fails, total_frames, 4, frame, frame_preprocessed, img_circles, img_ellipses);
-        /*if(total_frames == 314)
+        /*if(total_frames == 3100)//213
         {
             if(waitKey(5000) == 27)
             {
