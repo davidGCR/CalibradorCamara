@@ -28,8 +28,8 @@ const int  IDX_SON = 2; //indice del hijo en jerarquia
 const int  IDX_FATHER = 3; //indice del padre en jerarquia
 const float  DST_2_ELLIPS = 5;
 const int NUM_NEAR_ELLIPS = 2;
-const int ROWS_CTRL_PTS = 5;
-const int COL_CTRL_PTS = 4;
+const int ROWS_CTRL_PTS = 4;
+const int COL_CTRL_PTS = 3;
 const int REAL_NUM_CTRL_PTS = ROWS_CTRL_PTS * COL_CTRL_PTS;
 const float TRACK_THRESHOLD = 10;
 
@@ -61,6 +61,8 @@ void find_ellipses(Mat* img_preprocessing, Mat* img_out, int* n_fails, vector<P_
     float radio, radio_son;
     
     findContours( (*img_preprocessing), contours, hierarchy, CV_RETR_TREE, CHAIN_APPROX_SIMPLE, Point(0, 0) );
+
+    //cout << "-> " << contours.size() << endl;
     
     for (int ct=0; ct<contours.size(); ct++) {
         if(contours[ct].size() > MIN_POINTS_ELL_FT){
@@ -91,17 +93,19 @@ void find_ellipses(Mat* img_preprocessing, Mat* img_out, int* n_fails, vector<P_
     }
     
     img_circles = img_out->clone();
+
+    //cout << "-> " << p_ellipses.size() << endl;    
     
-    
-    int count = 0;
     float distance = 0;
     for(int i=0;i<p_ellipses.size();i++){ //filtrar ellipses por distancias
+        int count = 0;
+        if(*n_fails == 2)cout << "points: " << p_ellipses[i].x << " "<<p_ellipses[i].y << " "<< p_ellipses[i].radio<<endl;
         for (int j=0; j<p_ellipses.size(); j++) {
             if(i!=j){
                 distance = p_ellipses[i].distance(p_ellipses[j]);
                 
-                if (distance < DST_2_ELLIPS*p_ellipses[j].radio) {
-                    //                    cout<<"distanceeee: "<<distance<<endl;
+                if (distance < DST_2_ELLIPS*p_ellipses[i].radio) {
+                        //cout<< "i: " << i << " j: " <<j<<" distance: "<<distance << " radio: " << p_ellipses[j].radio<<endl;
                     count++;
                     //                    cv::line((*img_out), p_ellipses[i].center(), p_ellipses[j].center(), blue,2);
                 }
@@ -114,15 +118,18 @@ void find_ellipses(Mat* img_preprocessing, Mat* img_out, int* n_fails, vector<P_
             //            cv::circle((*img_out), p_ellipses[i].center(), p_ellipses[i].radio, green,2);
         }
     }
+
+    //cout << "-> " << pp_control_points.size() << endl;
     
     if (pp_control_points.size()==REAL_NUM_CTRL_PTS) {
-        //cout<<"# entrooooooo: "<<endl;
+        //cout<<"# entro: "<< *n_fails<<endl;
         for(int j=0; j<pp_control_points.size(); j++){
             cv::ellipse((*img_out),pp_control_points[j].fit_ellipse,white,2);
         }
         track_points((*img_out),pp_control_points,control_points,frame_time);
     }
     else{
+        cout<<"# entro: "<< *n_fails<<endl;
         (*n_fails)++;
     }
     //    int menor=0, mayor=0;
@@ -296,7 +303,7 @@ void initialize_track_points(Mat& frame, vector<P_Ellipse>& pp_control_points, v
                         flac_vertical = true;
                         float x1 = ellipse_rect_left.x;
                         float x2 = ellipse_rect_right.x;
-                        cout<<"recta vertical!!!!!!!!!!!!!! x1: "<<x1<<", x2: "<<x2<<endl;
+                        //cout<<"recta vertical!!!!!!!!!!!!!! x1: "<<x1<<", x2: "<<x2<<endl;
                         //ordenar los puntos de una recta con respecto al eje Y
                         sort(ellipses_in_line.begin(), ellipses_in_line.end(), sort_ellipses_by_y);
                         cv::line(frame, ellipses_in_line[0].center(), ellipses_in_line[ ellipses_in_line.size()-1].center(), green, 2);
@@ -384,7 +391,7 @@ void track_points(Mat& frame, vector<P_Ellipse>& pp_control_points, vector<P_Ell
     }
     else{
         
-        cout << "ESLE=================== pp: "<<pp_control_points.size()<<" , cp: "<<control_points.size()<<endl;
+        //cout << "ESLE=================== pp: "<<pp_control_points.size()<<" , cp: "<<control_points.size()<<endl;
         float dist_min;
         float dist = 0;
         int near_point = 0;
@@ -399,23 +406,23 @@ void track_points(Mat& frame, vector<P_Ellipse>& pp_control_points, vector<P_Ell
             }
             
             cv::line(frame, control_points[i].center(), pp_control_points[near_point].center(), yellow,2);
-            cout << "= ************* dist min: "<<dist_min<<", dist: "<<dist<<endl;
+            //cout << "= ************* dist min: "<<dist_min<<", dist: "<<dist<<endl;
             if(dist_min > TRACK_THRESHOLD){
-                cout << "======lejosssssssssssssssssssssssssss======"<<endl;
+                //cout << "======lejosssssssssssssssssssssssssss======"<<endl;
                 dist_min = -1;
                 //                string s = "/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/captures/cap-"+to_string(frame_time)+".jpg";
                 //                imwrite(s,frame);
                 break;
             }
             
-            cout<<"labeleddddddd: "<<i<<endl;
+            //cout<<"labeleddddddd: "<<i<<endl;
             label = i;
             putText(frame, to_string(label), pp_control_points[near_point].center(), FONT_HERSHEY_COMPLEX_SMALL, 1, color_text, 2);
         }
         //        string s = "/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/captures/cap-"+to_string(frame_time)+".jpg";
         //        imwrite(s,frame);
         if (dist_min == -1) {
-            cout<<"======================== CLEAR ==============================: "<<endl;
+            //cout<<"======================== CLEAR ==============================: "<<endl;
             control_points.clear();
             initialize_track_points(frame, pp_control_points, control_points, frame_time);
             return;
@@ -430,15 +437,97 @@ void track_points(Mat& frame, vector<P_Ellipse>& pp_control_points, vector<P_Ell
     
 }
 
+void thresholdIntegral(cv::Mat &inputMat, cv::Mat &outputMat)
+{
+    // accept only char type matrices
+    CV_Assert(!inputMat.empty());
+    CV_Assert(inputMat.depth() == CV_8U);
+    CV_Assert(inputMat.channels() == 1);
+    CV_Assert(!outputMat.empty());
+    CV_Assert(outputMat.depth() == CV_8U);
+    CV_Assert(outputMat.channels() == 1);
+
+    // rows -> height -> y
+    int nRows = inputMat.rows;
+    // cols -> width -> x
+    int nCols = inputMat.cols;
+
+    // create the integral image
+    cv::Mat sumMat;
+    cv::integral(inputMat, sumMat);
+
+    CV_Assert(sumMat.depth() == CV_32S);
+    CV_Assert(sizeof(int) == 4);
+
+    int S = MAX(nRows, nCols)/16;
+    double T = 0.1;
+
+    // perform thresholding
+    int s2 = S/2;
+    int x1, y1, x2, y2, count, sum;
+
+    // CV_Assert(sizeof(int) == 4);
+    int *p_y1, *p_y2;
+    uchar *p_inputMat, *p_outputMat;
+
+    for( int i = 0; i < nRows; ++i)
+    {
+        y1 = i-s2;
+        y2 = i+s2;
+
+        if (y1 < 0){
+            y1 = 0;
+        }
+        if (y2 >= nRows) {
+            y2 = nRows-1;
+        }
+
+        p_y1 = sumMat.ptr<int>(y1);
+        p_y2 = sumMat.ptr<int>(y2);
+        p_inputMat = inputMat.ptr<uchar>(i);
+        p_outputMat = outputMat.ptr<uchar>(i);
+
+        for ( int j = 0; j < nCols; ++j)
+        {
+            // set the SxS region
+            x1 = j-s2;
+            x2 = j+s2;
+
+            if (x1 < 0) {
+                x1 = 0;
+            }
+            if (x2 >= nCols) {
+                x2 = nCols-1;
+            }
+
+            count = (x2-x1)*(y2-y1);
+
+            // I(x,y)=s(x2,y2)-s(x1,y2)-s(x2,y1)+s(x1,x1)
+            sum = p_y2[x2] - p_y1[x2] - p_y2[x1] + p_y1[x1];
+
+            if ((int)(p_inputMat[j] * count) < (int)(sum*(1.0-T)))
+                p_outputMat[j] = 0;
+            else
+                p_outputMat[j] = 255;
+        }
+    }
+}
+
 void preprocessing_frame(Mat* frame, Mat* frame_output){
     Mat blur;
     Mat frame_gray;
     Mat frame_thresholding;
+    Mat integralImage;
     //namedWindow("New frame", 1 );
     cvtColor( *frame,frame_gray, COLOR_BGR2GRAY );
-    GaussianBlur( frame_gray, blur, Size(5,5),0 );
+    GaussianBlur( frame_gray, blur, Size(7,7),0);
     //threshold(src_gray,detected_edges,0,255,THRESH_BINARY+THRESH_OTSU);
-    adaptiveThreshold(frame_gray, frame_thresholding, 255, ADAPTIVE_THRESH_GAUSSIAN_C,CV_THRESH_BINARY,125,20);
+    //integral(blur, integralImage);
+    //frame_thresholding = Mat::zeros(blur.size(), CV_8UC1);
+    blur.copyTo(frame_thresholding);
+    thresholdIntegral(blur, frame_thresholding);
+    //adaptiveThreshold(frame_thresholding, frame_thresholding, 255, ADAPTIVE_THRESH_GAUSSIAN_C,CV_THRESH_BINARY,125,20);
+
     //imshow("New frame",frame_thresholding);
     (*frame_output) = frame_thresholding;
     // cout<<"preprocesada: "<<frame_thresholding.size<<endl;
@@ -456,11 +545,11 @@ void ShowManyImages(string title, int n_fails, int total_frames, int nArgs, ...)
     int max;
     
     if(nArgs <= 0) {
-        printf("Number of arguments too small....\n");
+        //printf("Number of arguments too small....\n");
         return;
     }
     else if(nArgs > 14) {
-        printf("Number of arguments too large, can only handle maximally 12 images at a time ...\n");
+        //printf("Number of arguments too large, can only handle maximally 12 images at a time ...\n");
         return;
     }
     else if (nArgs == 1) {
@@ -538,7 +627,8 @@ void ShowManyImages(string title, int n_fails, int total_frames, int nArgs, ...)
 
 int main()
 {
-    string path_data = "/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/";
+    //string path_data = "/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/";
+    string path_data = "data/";
     //    Mat img = imread(path_data+"padron1.png",CV_LOAD_IMAGE_COLOR);
     //    imshow("Original",img);
     //
@@ -553,7 +643,7 @@ int main()
     vector<P_Ellipse> control_points;
     
     VideoCapture cap;
-    cap.open(path_data+"padron2.mp4");
+    cap.open(path_data+"padron1.avi");
     if ( !cap.isOpened() ){
         cout << "Cannot open the video file. \n";
         return -1;
@@ -574,8 +664,8 @@ int main()
         
         frame_time = cap.get(CV_CAP_PROP_POS_MSEC)/1000;
         //time_t a = frame_time;
-        cout<<"time: "<<frame_time<<endl;
-        
+        //cout<<"time: "<<frame_time<<endl;
+        cout << total_frames << endl;
         Mat frame_preprocessed;
         auto t11 = std::chrono::high_resolution_clock::now();
         preprocessing_frame(&frame, &frame_preprocessed);
@@ -589,8 +679,20 @@ int main()
         //cvtColor(frame_preprocessed,frame_preprocessed, COLOR_GRAY2RGB);
         //imshow("other",frame_preprocessed);
         //ShowManyImages("resultado", n_fails, total_frames, 4, frame, frame_preprocessed, img_circles, img_ellipses);
-        
-        if(waitKey(5) == 27)
+        /*if(total_frames == 314)
+        {
+            if(waitKey(5000) == 27)
+            {
+                break;
+            }
+        }
+        else
+            if(waitKey(2) == 27)
+            {
+                break;
+            }*/
+
+        if(waitKey(2) == 27)
         {
             break;
         }
