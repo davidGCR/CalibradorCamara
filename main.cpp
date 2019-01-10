@@ -15,6 +15,7 @@
 #include <string>
 #include <time.h>
 #include <cmath>
+#include <iomanip>
 #include "opencv2/calib3d.hpp"
 
 #include "ellipse.h"
@@ -50,7 +51,7 @@ Scalar rose(255, 0, 255);
 Scalar celeste(255, 255 , 0);
 Scalar black(0, 0 , 0);
 
-void track_points(Mat& frame,vector<P_Ellipse>& p_ellipses,
+int track_points(Mat& frame,vector<P_Ellipse>& p_ellipses,
                   vector<P_Ellipse>& pp_control_points, float frame_time );
 
 int find_ellipses(Mat* img_preprocessing, Mat* img_out, int* n_fails, vector<P_Ellipse>& control_points, float frame_time){
@@ -62,7 +63,7 @@ int find_ellipses(Mat* img_preprocessing, Mat* img_out, int* n_fails, vector<P_E
     float radio, radio_son;
     
     findContours( (*img_preprocessing), contours, hierarchy, CV_RETR_TREE, CHAIN_APPROX_SIMPLE, Point(0, 0) );
-
+    
     //cout << "-> " << contours.size() << endl;
     
     for (int ct=0; ct<contours.size(); ct++) {
@@ -94,8 +95,8 @@ int find_ellipses(Mat* img_preprocessing, Mat* img_out, int* n_fails, vector<P_E
     }
     
     img_circles = img_out->clone();
-
-    //cout << "-> " << p_ellipses.size() << endl;    
+    
+    //cout << "-> " << p_ellipses.size() << endl;
     
     float distance = 0;
     for(int i=0;i<p_ellipses.size();i++){ //filtrar ellipses por distancias
@@ -104,9 +105,9 @@ int find_ellipses(Mat* img_preprocessing, Mat* img_out, int* n_fails, vector<P_E
         for (int j=0; j<p_ellipses.size(); j++) {
             if(i!=j){
                 distance = p_ellipses[i].distance(p_ellipses[j]);
-
+                
                 double medirDistancia;
-
+                
                 if(p_ellipses[j].radio > p_ellipses[i].radio)
                 {
                     medirDistancia = p_ellipses[i].radio;
@@ -117,7 +118,7 @@ int find_ellipses(Mat* img_preprocessing, Mat* img_out, int* n_fails, vector<P_E
                 }
                 
                 if (distance < DST_2_ELLIPS*medirDistancia) {
-                        //cout<< "i: " << i << " j: " <<j<<" distance: "<<distance << " radio: " << p_ellipses[j].radio<<endl;
+                    //cout<< "i: " << i << " j: " <<j<<" distance: "<<distance << " radio: " << p_ellipses[j].radio<<endl;
                     count++;
                     //                    cv::line((*img_out), p_ellipses[i].center(), p_ellipses[j].center(), blue,2);
                 }
@@ -134,15 +135,15 @@ int find_ellipses(Mat* img_preprocessing, Mat* img_out, int* n_fails, vector<P_E
             p_ellipses.erase(p_ellipses.begin()+i--);
         }
     }
-
-    //cout << "-> " << pp_control_points.size() << endl;
     
+    //cout << "-> " << pp_control_points.size() << endl;
+    int n_points = 0;
     if (pp_control_points.size()==REAL_NUM_CTRL_PTS) {
         //cout<<"# entro: "<< *n_fails<<endl;
         for(int j=0; j<pp_control_points.size(); j++){
             cv::ellipse((*img_out),pp_control_points[j].fit_ellipse,white,2);
         }
-        track_points((*img_out),pp_control_points,control_points,frame_time);
+        n_points = track_points((*img_out),pp_control_points,control_points,frame_time);
     }
     else{
         cout<<"# entro: "<< *n_fails<<endl;
@@ -157,7 +158,7 @@ int find_ellipses(Mat* img_preprocessing, Mat* img_out, int* n_fails, vector<P_E
     //    cout<<"# menor: "<<menor<<", mayor: "<<mayor<<endl;
     
     
-    return pp_control_points.size();
+    return n_points;
     
     //Draw ellipses
     //    Mat drawing = Mat::zeros( (*img_preprocessing).size(), CV_8UC3 );
@@ -366,12 +367,16 @@ void initialize_track_points(Mat& frame, vector<P_Ellipse>& pp_control_points, v
                         limit_points.push_back(ellipse_rect_left);
                         limit_points.push_back(ellipse_rect_right);
                     }
-                    string s = "/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/captures/cap-"+to_string(frame_time)+".jpg";
-                    imwrite(s,frame);
+//                    string s = "/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/captures/cap-"+to_string(frame_time)+".jpg";
+//                    imwrite(s,frame);
                     
                 }
             }
         }
+    }
+    if (rows != 4) {
+        //cout << "rows " << rows << endl;
+        control_points.clear();
     }
     //    if(verify_vertical_lines_order(control_points)){
     //        reorder_vertical_lines(frame, lines, control_points);
@@ -385,11 +390,8 @@ void initialize_track_points(Mat& frame, vector<P_Ellipse>& pp_control_points, v
  * p_ellipses_f1: ellipses encontradas en preprocesamiento
  * control_points: resultado de track_points
  */
-void track_points(Mat& frame, vector<P_Ellipse>& pp_control_points, vector<P_Ellipse>& control_points, float frame_time)
+int track_points(Mat& frame, vector<P_Ellipse>& pp_control_points, vector<P_Ellipse>& control_points, float frame_time)
 {
-    //    if (p_ellipses_f1.size() < REAL_NUM_CTRL_PTS && control_points.size() < REAL_NUM_CTRL_PTS) {
-    //        return;
-    //    }
     
     int label=-1;
     Scalar color_text = red;
@@ -398,12 +400,6 @@ void track_points(Mat& frame, vector<P_Ellipse>& pp_control_points, vector<P_Ell
     {
         initialize_track_points(frame, pp_control_points, control_points, frame_time);
         
-        //cout << "Pattern Traking fase 11111" << endl;
-        
-        //        if (rows != COL_CTRL_PTS) {
-        //            cout << "==================== clear control points: " << rows << endl;
-        //            control_points.clear();
-        //        }
     }
     else{
         
@@ -433,7 +429,9 @@ void track_points(Mat& frame, vector<P_Ellipse>& pp_control_points, vector<P_Ell
             
             //cout<<"labeleddddddd: "<<i<<endl;
             label = i;
+            control_points[i] = pp_control_points[near_point];
             putText(frame, to_string(label), pp_control_points[near_point].center(), FONT_HERSHEY_COMPLEX_SMALL, 1, color_text, 2);
+            //control_points=pp_control_points;
         }
         //        string s = "/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/captures/cap-"+to_string(frame_time)+".jpg";
         //        imwrite(s,frame);
@@ -441,18 +439,16 @@ void track_points(Mat& frame, vector<P_Ellipse>& pp_control_points, vector<P_Ell
             //cout<<"======================== CLEAR ==============================: "<<endl;
             control_points.clear();
             initialize_track_points(frame, pp_control_points, control_points, frame_time);
-            return;
-        }
-        
-        
+            return control_points.size();
+        } 
     }
     
-    if (control_points.size() == REAL_NUM_CTRL_PTS) {
+    // if (control_points.size() == REAL_NUM_CTRL_PTS) {
         
-    }
-    
+    // }
+    return control_points.size();
 }
- 
+
 
 void thresholdIntegral(cv::Mat &inputMat, cv::Mat &outputMat)
 {
@@ -463,65 +459,65 @@ void thresholdIntegral(cv::Mat &inputMat, cv::Mat &outputMat)
     CV_Assert(!outputMat.empty());
     CV_Assert(outputMat.depth() == CV_8U);
     CV_Assert(outputMat.channels() == 1);
-
+    
     // rows -> height -> y
     int nRows = inputMat.rows;
     // cols -> width -> x
     int nCols = inputMat.cols;
-
+    
     // create the integral image
     cv::Mat sumMat;
     cv::integral(inputMat, sumMat);
-
+    
     CV_Assert(sumMat.depth() == CV_32S);
     CV_Assert(sizeof(int) == 4);
-
+    
     int S = MAX(nRows, nCols)/16;
     double T = 0.1;
-
+    
     // perform thresholding
     int s2 = S/2;
     int x1, y1, x2, y2, count, sum;
-
+    
     // CV_Assert(sizeof(int) == 4);
     int *p_y1, *p_y2;
     uchar *p_inputMat, *p_outputMat;
-
+    
     for( int i = 0; i < nRows; ++i)
     {
         y1 = i-s2;
         y2 = i+s2;
-
+        
         if (y1 < 0){
             y1 = 0;
         }
         if (y2 >= nRows) {
             y2 = nRows-1;
         }
-
+        
         p_y1 = sumMat.ptr<int>(y1);
         p_y2 = sumMat.ptr<int>(y2);
         p_inputMat = inputMat.ptr<uchar>(i);
         p_outputMat = outputMat.ptr<uchar>(i);
-
+        
         for ( int j = 0; j < nCols; ++j)
         {
             // set the SxS region
             x1 = j-s2;
             x2 = j+s2;
-
+            
             if (x1 < 0) {
                 x1 = 0;
             }
             if (x2 >= nCols) {
                 x2 = nCols-1;
             }
-
+            
             count = (x2-x1)*(y2-y1);
-
+            
             // I(x,y)=s(x2,y2)-s(x1,y2)-s(x2,y1)+s(x1,x1)
             sum = p_y2[x2] - p_y1[x2] - p_y2[x1] + p_y1[x1];
-
+            
             if ((int)(p_inputMat[j] * count) < (int)(sum*(1.0-T)))
                 p_outputMat[j] = 0;
             else
@@ -544,7 +540,7 @@ void preprocessing_frame(Mat* frame, Mat* frame_output){
     blur.copyTo(frame_thresholding);
     thresholdIntegral(blur, frame_thresholding);
     //adaptiveThreshold(frame_thresholding, frame_thresholding, 255, ADAPTIVE_THRESH_GAUSSIAN_C,CV_THRESH_BINARY,125,20);
-
+    
     //imshow("New frame",frame_thresholding);
     (*frame_output) = frame_thresholding;
     // cout<<"preprocesada: "<<frame_thresholding.size<<endl;
@@ -642,60 +638,69 @@ void ShowManyImages(string title, int n_fails, int total_frames, int nArgs, ...)
     va_end(args);
 }
 
-float calibrate_with_points(Size &imageSize, Mat &cameraMatrix, Mat &distCoeffs, vector<vector<Point2f>> &imagePoints) {
-
-	Size boardSize(5, 4);
-	float squareSize = 44.3;
-	float aspectRatio = 1;
-	vector<Mat> rvecs;
-	vector<Mat> tvecs;
-	vector<float> reprojErrs;
-	vector<vector<Point3f> > objectPoints(1);
-
-	distCoeffs = Mat::zeros(8, 1, CV_64F);
-
-	objectPoints[0].resize(0);
-	for ( int i = 0; i < boardSize.height; i++ ) {
-		for ( int j = 0; j < boardSize.width; j++ ) {
-			objectPoints[0].push_back(Point3f(  float(j * squareSize),
-			                                    float(i * squareSize), 0));
-		}
-	}
-
-	objectPoints.resize(imagePoints.size(), objectPoints[0]);
-
-	double rms = calibrateCamera(objectPoints,
-	                             imagePoints,
-	                             imageSize,
-	                             cameraMatrix,
-	                             distCoeffs,
-	                             rvecs,
-	                             tvecs/*,
-	                             CV_CALIB_ZERO_TANGENT_DIST*/);
-
-	return rms;
+float calibrate_camera(Size &imageSize, Mat &cameraMatrix, Mat &distCoeffs, vector<vector<Point2f>>& imagePoints) {
+    /*
+     * OjectPoints: vector que describe como debe verse el patron
+     * imagePoints: vector de vectores con puntos de control(un frame tiene un vector de N puntos de control)
+     * imageSize: tamaño de la imagen
+     * distCoeffs: coeficientes de distorcion
+     * rvecs: vector de rotacion
+     * tvecs: vector de tranlacion
+     */
+    Size boardSize(5,4);
+    float squareSize = 0.45;
+//    float squareSize = 44.3;
+    float aspectRatio = 1;
+    vector<Mat> rvecs;
+    vector<Mat> tvecs;
+    vector<float> reprojErrs;
+    vector<vector<Point3f> > objectPoints(1);
+    
+    distCoeffs = Mat::zeros(8, 1, CV_64F);
+    
+    objectPoints[0].resize(0);
+    for ( int i = 0; i < boardSize.height; i++ ) {
+        for ( int j = 0; j < boardSize.width; j++ ) {
+            objectPoints[0].push_back(Point3f(  float(j * squareSize),
+                                              float(i * squareSize), 0));
+        }
+    }
+    
+    objectPoints.resize(imagePoints.size(), objectPoints[0]);
+    
+    double rms = calibrateCamera(objectPoints,
+                                 imagePoints,
+                                 imageSize,
+                                 cameraMatrix,
+                                 distCoeffs,
+                                 rvecs,
+                                 tvecs/*,
+                                       CV_CALIB_ZERO_TANGENT_DIST*/);
+    
+    return rms;
 }
 
 vector<Point2f> ellipses2Points(vector<P_Ellipse> ellipses){
-   vector<Point2f> buffer(REAL_NUM_CTRL_PTS);
-   for(int i=0;i<REAL_NUM_CTRL_PTS;i++){
-       buffer[i] = ellipses[i].center();
-   }
-   return buffer;
+    vector<Point2f> buffer(REAL_NUM_CTRL_PTS);
+    for(int i=0;i<REAL_NUM_CTRL_PTS;i++){
+        buffer[i] = ellipses[i].center();
+    }
+    return buffer;
 }
 
 int main()
 {
     //string path_data = "/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/";
     string path_data = "/home/david/Escritorio/calib-data/";
-
+    
     //Camera calibration
-    float rms;
-    int NUM_FRAMES_FOR_CALIBRATION = 20;
+    float rms=-1;
+    int NUM_FRAMES_FOR_CALIBRATION = 30;
+    int DELAY_TIME = 10;
     vector<vector<Point2f>> imagePoints;
     Mat cameraMatrix;
     Mat distCoeffs = Mat::zeros(8, 1, CV_64F);
-
+    
     vector<P_Ellipse> control_points;
     
     VideoCapture cap;
@@ -704,13 +709,23 @@ int main()
         cout << "Cannot open the video file. \n";
         return -1;
     }
+    Mat frame;
+    cap.read(frame);
+    //total_frames = cap.get(CAP_PROP_FRAME_COUNT);
+    int w = frame.rows;
+    int h = frame.cols;
+    Size imageSize(h, w);
+    cout<<"imagesize: "<<imageSize<<endl;
+    
+    
     namedWindow("resultado",CV_WINDOW_AUTOSIZE);
     int total_frames=0;
     int n_fails = 0;
     float frame_time = 0;
     int points_detected = 0;
+
+
     while (1) {
-        
         Mat frame;
         cap>>frame;
         if (frame.empty()) {
@@ -718,43 +733,68 @@ int main()
             break;
         }
         total_frames++;
-        
         frame_time = cap.get(CV_CAP_PROP_POS_MSEC)/1000;
-        //time_t a = frame_time;
-        //cout<<"time: "<<frame_time<<endl;
-        //cout << total_frames << endl;
+
         Mat frame_preprocessed;
         auto t11 = std::chrono::high_resolution_clock::now();
         preprocessing_frame(&frame, &frame_preprocessed);
         //    imshow("Pre-procesada",img_preprocessed);
         Mat img_ellipses = frame.clone();
-
+        
         //if(total_frames == 3100)//44
         points_detected = find_ellipses(&frame_preprocessed, &img_ellipses,&n_fails,control_points,frame_time);
         auto t12 = std::chrono::high_resolution_clock::now();
+        
         duration += std::chrono::duration_cast<std::chrono::milliseconds>(t12 - t11).count();
         imshow("final",img_ellipses);
+        
+        if(rms==-1){
+            if(total_frames% DELAY_TIME == 0 && points_detected == REAL_NUM_CTRL_PTS){
+//                string s ="/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/captures/cap-"+to_string(frame_time)+".jpg";
+//                imwrite(s,img_ellipses);
 
-        if(points_detected == REAL_NUM_CTRL_PTS){
-
+                vector<Point2f> buffer = ellipses2Points(control_points) ;
+                
+                imagePoints.push_back(buffer);
+                cout<<"CONTROL POINTS: "<<control_points.size()<<endl;
+                for (int i=0; i<buffer.size(); i++) {
+                    cout<<"("<<buffer[i].x<<buffer[i].y<<") - ";
+                }
+                
+                if(imagePoints.size()==NUM_FRAMES_FOR_CALIBRATION){
+                    cout<<"=======================calibrar..."<<endl;
+                    rms= calibrate_camera(imageSize, cameraMatrix, distCoeffs, imagePoints);
+                    cout << "cameraMatrix " << cameraMatrix << endl;
+                    cout << "distCoeffs " << distCoeffs << endl;
+                    cout << "rms: " << rms << endl;
+                    break;
+                }
+            }
         }
-
+//         Mat m_calibration = Mat::zeros(Size(h, w), CV_8UC3);
+//         for (int i = 0; i < imagePoints.size(); i++) {
+//             for (int j = 0; j < 20; j++) {
+//                 circle(m_calibration, imagePoints[i][j], 10, yellow);
+//             }
+//         }
+//         imshow("Calibration", m_calibration);
+        
         //cvtColor(frame_preprocessed,frame_preprocessed, COLOR_GRAY2RGB);
         //imshow("other",frame_preprocessed);
         //ShowManyImages("resultado", n_fails, total_frames, 4, frame, frame_preprocessed, img_circles, img_ellipses);
         /*if(total_frames == 3100)//213
-        {
-            if(waitKey(5000) == 27)
-            {
-                break;
-            }
-        }
-        else
-            if(waitKey(2) == 27)
-            {
-                break;
-            }*/
-
+         {
+         if(waitKey(5000) == 27)
+         {
+         break;
+         }
+         }
+         else
+         if(waitKey(2) == 27)
+         {
+         break;
+         }*/
+        
         if(waitKey(2) == 27)
         {
             break;
