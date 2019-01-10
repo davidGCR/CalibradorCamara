@@ -15,6 +15,7 @@
 #include <string>
 #include <time.h>
 #include <cmath>
+#include "opencv2/calib3d.hpp"
 
 #include "ellipse.h"
 #include "Line.h"
@@ -52,7 +53,7 @@ Scalar black(0, 0 , 0);
 void track_points(Mat& frame,vector<P_Ellipse>& p_ellipses,
                   vector<P_Ellipse>& pp_control_points, float frame_time );
 
-void find_ellipses(Mat* img_preprocessing, Mat* img_out, int* n_fails, vector<P_Ellipse>& control_points, float frame_time){
+int find_ellipses(Mat* img_preprocessing, Mat* img_out, int* n_fails, vector<P_Ellipse>& control_points, float frame_time){
     vector<vector<Point> > contours;
     vector<Vec4i> hierarchy;
     vector<P_Ellipse> p_ellipses;
@@ -156,7 +157,7 @@ void find_ellipses(Mat* img_preprocessing, Mat* img_out, int* n_fails, vector<P_
     //    cout<<"# menor: "<<menor<<", mayor: "<<mayor<<endl;
     
     
-    
+    return pp_control_points.size();
     
     //Draw ellipses
     //    Mat drawing = Mat::zeros( (*img_preprocessing).size(), CV_8UC3 );
@@ -451,6 +452,7 @@ void track_points(Mat& frame, vector<P_Ellipse>& pp_control_points, vector<P_Ell
     }
     
 }
+ 
 
 void thresholdIntegral(cv::Mat &inputMat, cv::Mat &outputMat)
 {
@@ -640,21 +642,60 @@ void ShowManyImages(string title, int n_fails, int total_frames, int nArgs, ...)
     va_end(args);
 }
 
+float calibrate_with_points(Size &imageSize, Mat &cameraMatrix, Mat &distCoeffs, vector<vector<Point2f>> &imagePoints) {
+
+	Size boardSize(5, 4);
+	float squareSize = 44.3;
+	float aspectRatio = 1;
+	vector<Mat> rvecs;
+	vector<Mat> tvecs;
+	vector<float> reprojErrs;
+	vector<vector<Point3f> > objectPoints(1);
+
+	distCoeffs = Mat::zeros(8, 1, CV_64F);
+
+	objectPoints[0].resize(0);
+	for ( int i = 0; i < boardSize.height; i++ ) {
+		for ( int j = 0; j < boardSize.width; j++ ) {
+			objectPoints[0].push_back(Point3f(  float(j * squareSize),
+			                                    float(i * squareSize), 0));
+		}
+	}
+
+	objectPoints.resize(imagePoints.size(), objectPoints[0]);
+
+	double rms = calibrateCamera(objectPoints,
+	                             imagePoints,
+	                             imageSize,
+	                             cameraMatrix,
+	                             distCoeffs,
+	                             rvecs,
+	                             tvecs/*,
+	                             CV_CALIB_ZERO_TANGENT_DIST*/);
+
+	return rms;
+}
+
+vector<Point2f> ellipses2Points(vector<P_Ellipse> ellipses){
+   vector<Point2f> buffer(REAL_NUM_CTRL_PTS);
+   for(int i=0;i<REAL_NUM_CTRL_PTS;i++){
+       buffer[i] = ellipses[i].center();
+   }
+   return buffer;
+}
+
 int main()
 {
     //string path_data = "/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/";
-    string path_data = "data/";
-    //    Mat img = imread(path_data+"padron1.png",CV_LOAD_IMAGE_COLOR);
-    //    imshow("Original",img);
-    //
-    //    Mat img_preprocessed;
-    //    preprocessing_frame(&img, &img_preprocessed);
-    ////    imshow("Pre-procesada",img_preprocessed);
-    //
-    //    Mat img_ellipses = img.clone();
-    //    find_ellipses(&img_preprocessed, &img_ellipses);
-    //    imshow("Ellipses",img_ellipses);
-    //    waitKey(0);
+    string path_data = "/home/david/Escritorio/calib-data/";
+
+    //Camera calibration
+    float rms;
+    int NUM_FRAMES_FOR_CALIBRATION = 20;
+    vector<vector<Point2f>> imagePoints;
+    Mat cameraMatrix;
+    Mat distCoeffs = Mat::zeros(8, 1, CV_64F);
+
     vector<P_Ellipse> control_points;
     
     VideoCapture cap;
@@ -667,6 +708,7 @@ int main()
     int total_frames=0;
     int n_fails = 0;
     float frame_time = 0;
+    int points_detected = 0;
     while (1) {
         
         Mat frame;
@@ -688,11 +730,15 @@ int main()
         Mat img_ellipses = frame.clone();
 
         //if(total_frames == 3100)//44
-        find_ellipses(&frame_preprocessed, &img_ellipses,&n_fails,control_points,frame_time);
+        points_detected = find_ellipses(&frame_preprocessed, &img_ellipses,&n_fails,control_points,frame_time);
         auto t12 = std::chrono::high_resolution_clock::now();
         duration += std::chrono::duration_cast<std::chrono::milliseconds>(t12 - t11).count();
         imshow("final",img_ellipses);
-        
+
+        if(points_detected == REAL_NUM_CTRL_PTS){
+
+        }
+
         //cvtColor(frame_preprocessed,frame_preprocessed, COLOR_GRAY2RGB);
         //imshow("other",frame_preprocessed);
         //ShowManyImages("resultado", n_fails, total_frames, 4, frame, frame_preprocessed, img_circles, img_ellipses);
