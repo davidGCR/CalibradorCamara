@@ -144,9 +144,10 @@ int find_ellipses(Mat* img_preprocessing, Mat* img_out, int* n_fails, vector<P_E
             cv::ellipse((*img_out),pp_control_points[j].fit_ellipse,white,2);
         }
         n_points = track_points((*img_out),pp_control_points,control_points,frame_time);
+        //cout << "->"<<n_points << endl;
     }
     else{
-        cout<<"# entro: "<< *n_fails<<endl;
+        //cout<<"# entro: "<< *n_fails<<endl;
         (*n_fails)++;
     }
     //    int menor=0, mayor=0;
@@ -395,7 +396,7 @@ int track_points(Mat& frame, vector<P_Ellipse>& pp_control_points, vector<P_Elli
     
     int label=-1;
     Scalar color_text = red;
-    
+    //cout << "track_points: "<<control_points.size() << endl;
     if (control_points.size() == 0)
     {
         initialize_track_points(frame, pp_control_points, control_points, frame_time);
@@ -546,7 +547,7 @@ void preprocessing_frame(Mat* frame, Mat* frame_output){
     // cout<<"preprocesada: "<<frame_thresholding.size<<endl;
 }
 
-void ShowManyImages(string title, int n_fails, int total_frames, int nArgs, ...) {
+void ShowManyImages(string title, int n_fails, int total_frames, float rms, Mat cameraMatrix, int nArgs, ...) {
     int size;
     int i;
     int m, n;
@@ -591,22 +592,22 @@ void ShowManyImages(string title, int n_fails, int total_frames, int nArgs, ...)
     }
     
     
-    Mat DispImage = Mat::zeros(Size(100 + size*w, size*h), CV_8UC3);
+    Mat DispImage = Mat::zeros(Size(350 + size*w, size*h), CV_8UC3);
     
     va_list args;
     va_start(args, nArgs);
     
     for (i = 0, m = 20, n = 120; i < nArgs; i++, m += (20 + size)) {
-        Mat img;
-        //Mat img = va_arg(args, cv::Mat);
+        Mat all_img;
+        all_img = va_arg(args, cv::Mat);
         
-        if(img.empty()) {
+        if(all_img.empty()) {
             printf("Invalid arguments");
             return;
         }
         
-        x = img.cols;
-        y = img.rows;
+        x = all_img.cols;
+        y = all_img.rows;
         
         max = (x > y)? x: y;
         
@@ -619,18 +620,35 @@ void ShowManyImages(string title, int n_fails, int total_frames, int nArgs, ...)
         
         
         Rect ROI(m, n, (int)( x/scale ), (int)( y/scale ));
-        Mat temp; resize(img,temp, Size(ROI.width, ROI.height));
+        Mat temp; resize(all_img,temp, Size(ROI.width, ROI.height));
         temp.copyTo(DispImage(ROI));
     }
     
     namedWindow( title, 1 );
-    putText(DispImage, "CAMERA CALIBRATION", Point2f(250,50), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,200), 2 , 8 , false);
+    putText(DispImage, "CAMERA CALIBRATION", Point2f(400,50), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,200), 2 , 8 , false);
     putText(DispImage, "Original Frame", Point2f(100,90), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
     putText(DispImage, "Preprocessed Frame", Point2f(500,90), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
     putText(DispImage, "Pattern Detected", Point2f(100,450), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
     putText(DispImage, "Order Centers", Point2f(500,450), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
     putText(DispImage, "Time: "+(to_string((float)duration/(float)total_frames)), Point2f(80,790), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
     putText(DispImage, "Fails: "+to_string(n_fails)+" of: "+to_string(total_frames), Point2f(500,790), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+    putText(DispImage, "Calibrate: ", Point2f(870,200), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+
+    if(rms==-1){
+        putText(DispImage, "Rms: "+to_string(0), Point2f(870,300), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+        putText(DispImage, "Fx: "+to_string(0), Point2f(870,350), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+        putText(DispImage, "Fy: "+to_string(0), Point2f(870,400), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+        putText(DispImage, "Cx: "+to_string(0), Point2f(870,450), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+        putText(DispImage, "Cy: "+to_string(0), Point2f(870,500), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+    }
+    else
+    {
+        putText(DispImage, "Rms: "+to_string(rms), Point2f(870,300), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+        putText(DispImage, "Fx: "+to_string(cameraMatrix.at<double>(0,0)), Point2f(870,350), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+        putText(DispImage, "Fy: "+to_string(cameraMatrix.at<double>(0,2)), Point2f(870,400), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+        putText(DispImage, "Cx: "+to_string(cameraMatrix.at<double>(1,1)), Point2f(870,450), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+        putText(DispImage, "Cy: "+to_string(cameraMatrix.at<double>(1,2)), Point2f(870,500), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+    }
     
     //string a = to_string(countimages);
     imshow( title, DispImage);
@@ -647,8 +665,8 @@ float calibrate_camera(Size &imageSize, Mat &cameraMatrix, Mat &distCoeffs, vect
      * rvecs: vector de rotacion
      * tvecs: vector de tranlacion
      */
-    Size boardSize(5,4);
-    float squareSize = 0.45;
+    Size boardSize(ROWS_CTRL_PTS, COL_CTRL_PTS);
+    float squareSize = 44;
 //    float squareSize = 44.3;
     float aspectRatio = 1;
     vector<Mat> rvecs;
@@ -674,7 +692,9 @@ float calibrate_camera(Size &imageSize, Mat &cameraMatrix, Mat &distCoeffs, vect
                                  cameraMatrix,
                                  distCoeffs,
                                  rvecs,
-                                 tvecs/*,
+                                 tvecs,
+                                 0/*,
+
                                        CV_CALIB_ZERO_TANGENT_DIST*/);
     
     return rms;
@@ -690,13 +710,13 @@ vector<Point2f> ellipses2Points(vector<P_Ellipse> ellipses){
 
 int main()
 {
-    //string path_data = "/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/";
-    string path_data = "/home/david/Escritorio/calib-data/";
+    string path_data = "cam2/";
+    //string path_data = "/home/david/Escritorio/calib-data/";
     
     //Camera calibration
     float rms=-1;
-    int NUM_FRAMES_FOR_CALIBRATION = 30;
-    int DELAY_TIME = 10;
+    int NUM_FRAMES_FOR_CALIBRATION = 45;
+    int DELAY_TIME = 50;
     vector<vector<Point2f>> imagePoints;
     Mat cameraMatrix;
     Mat distCoeffs = Mat::zeros(8, 1, CV_64F);
@@ -704,7 +724,7 @@ int main()
     vector<P_Ellipse> control_points;
     
     VideoCapture cap;
-    cap.open(path_data+"padron2.avi");
+    cap.open(path_data+"anillos.avi");
     if ( !cap.isOpened() ){
         cout << "Cannot open the video file. \n";
         return -1;
@@ -726,7 +746,7 @@ int main()
 
 
     while (1) {
-        Mat frame;
+        Mat frame, rview;
         cap>>frame;
         if (frame.empty()) {
             cout << "Cannot capture frame. \n";
@@ -746,9 +766,13 @@ int main()
         auto t12 = std::chrono::high_resolution_clock::now();
         
         duration += std::chrono::duration_cast<std::chrono::milliseconds>(t12 - t11).count();
-        imshow("final",img_ellipses);
+        
+
+        //cout << points_detected << endl;
         
         if(rms==-1){
+            rview = img_ellipses.clone();
+            //imshow("final",img_ellipses);
             if(total_frames% DELAY_TIME == 0 && points_detected == REAL_NUM_CTRL_PTS){
 //                string s ="/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/captures/cap-"+to_string(frame_time)+".jpg";
 //                imwrite(s,img_ellipses);
@@ -756,7 +780,7 @@ int main()
                 vector<Point2f> buffer = ellipses2Points(control_points) ;
                 
                 imagePoints.push_back(buffer);
-                cout<<"CONTROL POINTS: "<<control_points.size()<<endl;
+                //cout<<"CONTROL POINTS: "<<control_points.size()<<endl;
                 for (int i=0; i<buffer.size(); i++) {
                     cout<<"("<<buffer[i].x<<buffer[i].y<<") - ";
                 }
@@ -767,9 +791,31 @@ int main()
                     cout << "cameraMatrix " << cameraMatrix << endl;
                     cout << "distCoeffs " << distCoeffs << endl;
                     cout << "rms: " << rms << endl;
-                    break;
+
+                        
+                            //if( c  == ESC_KEY || c == 'q' || c == 'Q' )
+                                //break;
+                        //}
+                    
+                    //break;
                 }
             }
+        }
+        else
+        {
+
+            Mat map1, map2;
+            initUndistortRectifyMap(cameraMatrix, distCoeffs, Mat(),
+            getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, imageSize, 1, imageSize, 0),
+            imageSize, CV_16SC2, map1, map2);
+
+        //for(int i = 0; i < (int)s.imageList.size(); i++ )
+        //{
+            if(img_ellipses.empty())
+                continue;
+            remap(img_ellipses, rview, map1, map2, INTER_LINEAR);
+            //imshow("final", rview);
+            char c = (char)waitKey(1);
         }
 //         Mat m_calibration = Mat::zeros(Size(h, w), CV_8UC3);
 //         for (int i = 0; i < imagePoints.size(); i++) {
@@ -779,9 +825,10 @@ int main()
 //         }
 //         imshow("Calibration", m_calibration);
         
-        //cvtColor(frame_preprocessed,frame_preprocessed, COLOR_GRAY2RGB);
+        cvtColor(frame_preprocessed,frame_preprocessed, COLOR_GRAY2RGB);
         //imshow("other",frame_preprocessed);
         //ShowManyImages("resultado", n_fails, total_frames, 4, frame, frame_preprocessed, img_circles, img_ellipses);
+        ShowManyImages("resultado", n_fails, total_frames, rms, cameraMatrix, 4, frame, frame_preprocessed, img_ellipses, rview);
         /*if(total_frames == 3100)//213
          {
          if(waitKey(5000) == 27)
@@ -795,7 +842,7 @@ int main()
          break;
          }*/
         
-        if(waitKey(2) == 27)
+        if(waitKey(1) == 27)
         {
             break;
         }
