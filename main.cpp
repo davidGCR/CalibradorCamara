@@ -1,10 +1,10 @@
-//
-//  main.cpp
-//  testOpencv
-//
-//  Created by David Choqueluque Roman on 12/1/18.
-//  Copyright © 2018 David Choqueluque Roman. All rights reserved.
-//
+////
+////  main.cpp
+////  testOpencv
+////
+////  Created by David Choqueluque Roman on 12/1/18.
+////  Copyright © 2018 David Choqueluque Roman. All rights reserved.
+////
 
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/highgui.hpp"
@@ -20,20 +20,12 @@
 
 #include "ellipse.h"
 #include "Line.h"
+#include "constants.h"
 //#include <cv.h>
 #include <iostream>
 using namespace cv;
 using namespace std;
 
-const int  MIN_POINTS_ELL_FT = 4; //minimo numero de puntos para ellipse fitting
-const int  IDX_SON = 2; //indice del hijo en jerarquia
-const int  IDX_FATHER = 3; //indice del padre en jerarquia
-const float  DST_2_ELLIPS = 5;
-const int NUM_NEAR_ELLIPS = 2;
-const int ROWS_CTRL_PTS = 5;
-const int COL_CTRL_PTS = 4;
-const int REAL_NUM_CTRL_PTS = ROWS_CTRL_PTS * COL_CTRL_PTS;
-const float TRACK_THRESHOLD = 10;
 
 Mat src, src_gray;
 Mat img_circles;
@@ -52,9 +44,9 @@ Scalar celeste(255, 255 , 0);
 Scalar black(0, 0 , 0);
 
 int track_points(Mat& frame,vector<P_Ellipse>& p_ellipses,
-                  vector<P_Ellipse>& pp_control_points, float frame_time );
+                 vector<P_Ellipse>& pp_control_points, float frame_time );
 
-int find_ellipses(Mat* img_preprocessing, Mat* img_out, int* n_fails, vector<P_Ellipse>& control_points, float frame_time){
+int find_ellipses(Mat* img_preprocessing, Mat* img_out, vector<P_Ellipse>& control_points, float frame_time = 0,int* n_fails=0){
     vector<vector<Point> > contours;
     vector<Vec4i> hierarchy;
     vector<P_Ellipse> p_ellipses;
@@ -63,8 +55,6 @@ int find_ellipses(Mat* img_preprocessing, Mat* img_out, int* n_fails, vector<P_E
     float radio, radio_son;
     
     findContours( (*img_preprocessing), contours, hierarchy, CV_RETR_TREE, CHAIN_APPROX_SIMPLE, Point(0, 0) );
-    
-    //cout << "-> " << contours.size() << endl;
     
     for (int ct=0; ct<contours.size(); ct++) {
         if(contours[ct].size() > MIN_POINTS_ELL_FT){
@@ -216,7 +206,7 @@ bool sort_lines_by_x(Line p1, Line p2) {
 bool verify_vertical_lines_order(vector<P_Ellipse> control_points){
     cout<<"************************* orednaaaaaaaaa *****************************"<<endl;
     float x_left = control_points[0].x;
-    for (int i=ROWS_CTRL_PTS; i<control_points.size(); i+=ROWS_CTRL_PTS) {
+    for (int i=PATTERN_NUM_COLS; i<control_points.size(); i+=PATTERN_NUM_COLS) {
         if(x_left>control_points[i].x){
             return  true;
         }
@@ -240,7 +230,7 @@ void reorder_vertical_lines(Mat& frame,vector<Line>& lines,vector<P_Ellipse>& co
     sort(lines.begin(), lines.end(), sort_lines_by_x);
     control_points.clear();
     for (int i=0; i<lines.size(); i++) {
-        for (int j=0; j<ROWS_CTRL_PTS; j++) {
+        for (int j=0; j<PATTERN_NUM_COLS; j++) {
             control_points.push_back(lines[i].getEllipse(j));
             putText(frame, to_string(control_points.size()-1), control_points[i].center(), FONT_HERSHEY_COMPLEX_SMALL, 1, yellow, 2);
         }
@@ -298,7 +288,7 @@ void initialize_track_points(Mat& frame, vector<P_Ellipse>& pp_control_points, v
                     }
                 }
                 
-                if (conincidencias == ROWS_CTRL_PTS) { // se contraron la cantidad de patrones en una fila del patron
+                if (conincidencias == PATTERN_NUM_COLS) { // se contraron la cantidad de patrones en una fila del patron
                     //ordenar los puntos de una recta con respecto al eje X
                     sort(ellipses_in_line.begin(), ellipses_in_line.end(), sort_ellipses_by_x);
                     
@@ -357,19 +347,14 @@ void initialize_track_points(Mat& frame, vector<P_Ellipse>& pp_control_points, v
                             //                                    label = (int)(control_points.size() - 1);
                             //                                    putText(frame, to_string(label), ellipses_in_line[lbl].center(), FONT_HERSHEY_COMPLEX_SMALL, 1, red, 2);
                             //                                }
-                            //                                if(control_points.size() - 1 == 19){
-                            //                                    //a medida que se va agregando se etiqueta
-                            //                                    label = (int)(control_points.size() - 1);
-                            //                                    putText(frame, to_string(label), ellipses_in_line[lbl].center(), FONT_HERSHEY_COMPLEX_SMALL, 1, white, 2);
-                            //                                }
                         }
                         
                         //agregar puntos limites de la recta
                         limit_points.push_back(ellipse_rect_left);
                         limit_points.push_back(ellipse_rect_right);
                     }
-//                    string s = "/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/captures/cap-"+to_string(frame_time)+".jpg";
-//                    imwrite(s,frame);
+                    //                    string s = "/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/captures/cap-"+to_string(frame_time)+".jpg";
+                    //                    imwrite(s,frame);
                     
                 }
             }
@@ -441,11 +426,11 @@ int track_points(Mat& frame, vector<P_Ellipse>& pp_control_points, vector<P_Elli
             control_points.clear();
             initialize_track_points(frame, pp_control_points, control_points, frame_time);
             return control_points.size();
-        } 
+        }
     }
     
     // if (control_points.size() == REAL_NUM_CTRL_PTS) {
-        
+    
     // }
     return control_points.size();
 }
@@ -547,114 +532,114 @@ void preprocessing_frame(Mat* frame, Mat* frame_output){
     // cout<<"preprocesada: "<<frame_thresholding.size<<endl;
 }
 
-void ShowManyImages(string title, int n_fails, int total_frames, float rms, Mat cameraMatrix, int nArgs, ...) {
-    int size;
-    int i;
-    int m, n;
-    int x, y;
-    
-    int w, h;
-    
-    float scale;
-    int max;
-    
-    if(nArgs <= 0) {
-        //printf("Number of arguments too small....\n");
-        return;
-    }
-    else if(nArgs > 14) {
-        //printf("Number of arguments too large, can only handle maximally 12 images at a time ...\n");
-        return;
-    }
-    else if (nArgs == 1) {
-        w = h = 1;
-        size = 400;
-    }
-    else if (nArgs == 2) {
-        w = 2; h = 1;
-        size = 400;
-    }
-    else if (nArgs == 3 || nArgs == 4) {
-        w = 2; h = 2;
-        size = 400;
-    }
-    else if (nArgs == 5 || nArgs == 6) {
-        w = 3; h = 2;
-        size = 200;
-    }
-    else if (nArgs == 7 || nArgs == 8) {
-        w = 4; h = 2;
-        size = 200;
-    }
-    else {
-        w = 4; h = 3;
-        size = 150;
-    }
-    
-    
-    Mat DispImage = Mat::zeros(Size(350 + size*w, size*h), CV_8UC3);
-    
-    va_list args;
-    va_start(args, nArgs);
-    
-    for (i = 0, m = 20, n = 120; i < nArgs; i++, m += (20 + size)) {
-        Mat all_img;
-        all_img = va_arg(args, cv::Mat);
-        
-        if(all_img.empty()) {
-            printf("Invalid arguments");
-            return;
-        }
-        
-        x = all_img.cols;
-        y = all_img.rows;
-        
-        max = (x > y)? x: y;
-        
-        scale = (float) ( (float) max / size );
-        
-        if( i % w == 0 && m!= 20) {
-            m = 20;
-            n+= 20 + size-80;
-        }
-        
-        
-        Rect ROI(m, n, (int)( x/scale ), (int)( y/scale ));
-        Mat temp; resize(all_img,temp, Size(ROI.width, ROI.height));
-        temp.copyTo(DispImage(ROI));
-    }
-    
-    namedWindow( title, 1 );
-    putText(DispImage, "CAMERA CALIBRATION", Point2f(400,50), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,200), 2 , 8 , false);
-    putText(DispImage, "Original Frame", Point2f(100,90), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
-    putText(DispImage, "Preprocessed Frame", Point2f(500,90), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
-    putText(DispImage, "Pattern Detected", Point2f(100,450), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
-    putText(DispImage, "Order Centers", Point2f(500,450), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
-    putText(DispImage, "Time: "+(to_string((float)duration/(float)total_frames)), Point2f(80,790), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
-    putText(DispImage, "Fails: "+to_string(n_fails)+" of: "+to_string(total_frames), Point2f(500,790), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
-    putText(DispImage, "Calibrate: ", Point2f(870,200), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
-
-    if(rms==-1){
-        putText(DispImage, "Rms: "+to_string(0), Point2f(870,300), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
-        putText(DispImage, "Fx: "+to_string(0), Point2f(870,350), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
-        putText(DispImage, "Fy: "+to_string(0), Point2f(870,400), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
-        putText(DispImage, "Cx: "+to_string(0), Point2f(870,450), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
-        putText(DispImage, "Cy: "+to_string(0), Point2f(870,500), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
-    }
-    else
-    {
-        putText(DispImage, "Rms: "+to_string(rms), Point2f(870,300), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
-        putText(DispImage, "Fx: "+to_string(cameraMatrix.at<double>(0,0)), Point2f(870,350), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
-        putText(DispImage, "Fy: "+to_string(cameraMatrix.at<double>(0,2)), Point2f(870,400), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
-        putText(DispImage, "Cx: "+to_string(cameraMatrix.at<double>(1,1)), Point2f(870,450), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
-        putText(DispImage, "Cy: "+to_string(cameraMatrix.at<double>(1,2)), Point2f(870,500), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
-    }
-    
-    //string a = to_string(countimages);
-    imshow( title, DispImage);
-    
-    va_end(args);
-}
+//void ShowManyImages(string title, int n_fails, int total_frames, float rms, Mat cameraMatrix, int nArgs, ...) {
+//    int size;
+//    int i;
+//    int m, n;
+//    int x, y;
+//
+//    int w, h;
+//
+//    float scale;
+//    int max;
+//
+//    if(nArgs <= 0) {
+//        //printf("Number of arguments too small....\n");
+//        return;
+//    }
+//    else if(nArgs > 14) {
+//        //printf("Number of arguments too large, can only handle maximally 12 images at a time ...\n");
+//        return;
+//    }
+//    else if (nArgs == 1) {
+//        w = h = 1;
+//        size = 400;
+//    }
+//    else if (nArgs == 2) {
+//        w = 2; h = 1;
+//        size = 400;
+//    }
+//    else if (nArgs == 3 || nArgs == 4) {
+//        w = 2; h = 2;
+//        size = 400;
+//    }
+//    else if (nArgs == 5 || nArgs == 6) {
+//        w = 3; h = 2;
+//        size = 200;
+//    }
+//    else if (nArgs == 7 || nArgs == 8) {
+//        w = 4; h = 2;
+//        size = 200;
+//    }
+//    else {
+//        w = 4; h = 3;
+//        size = 150;
+//    }
+//
+//
+//    Mat DispImage = Mat::zeros(Size(350 + size*w, size*h), CV_8UC3);
+//
+//    va_list args;
+//    va_start(args, nArgs);
+//
+//    for (i = 0, m = 20, n = 120; i < nArgs; i++, m += (20 + size)) {
+//        Mat all_img;
+//        all_img = va_arg(args, cv::Mat);
+//
+//        if(all_img.empty()) {
+//            printf("Invalid arguments");
+//            return;
+//        }
+//
+//        x = all_img.cols;
+//        y = all_img.rows;
+//
+//        max = (x > y)? x: y;
+//
+//        scale = (float) ( (float) max / size );
+//
+//        if( i % w == 0 && m!= 20) {
+//            m = 20;
+//            n+= 20 + size-80;
+//        }
+//
+//
+//        Rect ROI(m, n, (int)( x/scale ), (int)( y/scale ));
+//        Mat temp; resize(all_img,temp, Size(ROI.width, ROI.height));
+//        temp.copyTo(DispImage(ROI));
+//    }
+//
+//    namedWindow( title, 1 );
+//    putText(DispImage, "CAMERA CALIBRATION", Point2f(400,50), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,200), 2 , 8 , false);
+//    putText(DispImage, "Original Frame", Point2f(100,90), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+//    putText(DispImage, "Preprocessed Frame", Point2f(500,90), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+//    putText(DispImage, "Pattern Detected", Point2f(100,450), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+//    putText(DispImage, "Order Centers", Point2f(500,450), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+//    putText(DispImage, "Time: "+(to_string((float)duration/(float)total_frames)), Point2f(80,790), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+//    putText(DispImage, "Fails: "+to_string(n_fails)+" of: "+to_string(total_frames), Point2f(500,790), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+//    putText(DispImage, "Calibrate: ", Point2f(870,200), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+//
+//    if(rms==-1){
+//        putText(DispImage, "Rms: "+to_string(0), Point2f(870,300), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+//        putText(DispImage, "Fx: "+to_string(0), Point2f(870,350), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+//        putText(DispImage, "Fy: "+to_string(0), Point2f(870,400), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+//        putText(DispImage, "Cx: "+to_string(0), Point2f(870,450), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+//        putText(DispImage, "Cy: "+to_string(0), Point2f(870,500), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+//    }
+//    else
+//    {
+//        putText(DispImage, "Rms: "+to_string(rms), Point2f(870,300), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+//        putText(DispImage, "Fx: "+to_string(cameraMatrix.at<double>(0,0)), Point2f(870,350), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+//        putText(DispImage, "Fy: "+to_string(cameraMatrix.at<double>(0,2)), Point2f(870,400), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+//        putText(DispImage, "Cx: "+to_string(cameraMatrix.at<double>(1,1)), Point2f(870,450), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+//        putText(DispImage, "Cy: "+to_string(cameraMatrix.at<double>(1,2)), Point2f(870,500), FONT_HERSHEY_PLAIN, 2,  Scalar(202,109,16), 2 , 8 , false);
+//    }
+//
+//    //string a = to_string(countimages);
+//    imshow( title, DispImage);
+//
+//    va_end(args);
+//}
 
 float calibrate_camera(Size &imageSize, Mat &cameraMatrix, Mat &distCoeffs, vector<vector<Point2f>>& imagePoints) {
     /*
@@ -665,9 +650,9 @@ float calibrate_camera(Size &imageSize, Mat &cameraMatrix, Mat &distCoeffs, vect
      * rvecs: vector de rotacion
      * tvecs: vector de tranlacion
      */
-    Size boardSize(ROWS_CTRL_PTS, COL_CTRL_PTS);
+    Size boardSize(PATTERN_NUM_COLS, PATTERN_NUM_ROWS);
     float squareSize = 44;
-//    float squareSize = 44.3;
+    //    float squareSize = 44.3;
     float aspectRatio = 1;
     vector<Mat> rvecs;
     vector<Mat> tvecs;
@@ -694,8 +679,8 @@ float calibrate_camera(Size &imageSize, Mat &cameraMatrix, Mat &distCoeffs, vect
                                  rvecs,
                                  tvecs,
                                  0/*,
-
-                                       CV_CALIB_ZERO_TANGENT_DIST*/);
+                                   
+                                   CV_CALIB_ZERO_TANGENT_DIST*/);
     
     return rms;
 }
@@ -708,11 +693,7 @@ vector<Point2f> ellipses2Points(vector<P_Ellipse> ellipses){
     return buffer;
 }
 
-int main()
-{
-    string path_data = "cam2/";
-    //string path_data = "/home/david/Escritorio/calib-data/";
-    
+void first_calibration_homework(string video_file){
     //Camera calibration
     float rms=-1;
     int NUM_FRAMES_FOR_CALIBRATION = 45;
@@ -721,14 +702,17 @@ int main()
     Mat cameraMatrix;
     Mat distCoeffs = Mat::zeros(8, 1, CV_64F);
     
+    //found pattern points
     vector<P_Ellipse> control_points;
     
     VideoCapture cap;
-    cap.open(path_data+"anillos.avi");
+    cap.open(video_file);
     if ( !cap.isOpened() ){
         cout << "Cannot open the video file. \n";
-        return -1;
+        return;
     }
+    
+    
     Mat frame;
     cap.read(frame);
     //total_frames = cap.get(CAP_PROP_FRAME_COUNT);
@@ -743,8 +727,8 @@ int main()
     int n_fails = 0;
     float frame_time = 0;
     int points_detected = 0;
-
-
+    
+    
     while (1) {
         Mat frame, rview;
         cap>>frame;
@@ -754,7 +738,7 @@ int main()
         }
         total_frames++;
         frame_time = cap.get(CV_CAP_PROP_POS_MSEC)/1000;
-
+        
         Mat frame_preprocessed;
         auto t11 = std::chrono::high_resolution_clock::now();
         preprocessing_frame(&frame, &frame_preprocessed);
@@ -762,25 +746,18 @@ int main()
         Mat img_ellipses = frame.clone();
         
         //if(total_frames == 3100)//44
-        points_detected = find_ellipses(&frame_preprocessed, &img_ellipses,&n_fails,control_points,frame_time);
+        points_detected = find_ellipses(&frame_preprocessed, &img_ellipses,control_points,frame_time,&n_fails);
         auto t12 = std::chrono::high_resolution_clock::now();
         
         duration += std::chrono::duration_cast<std::chrono::milliseconds>(t12 - t11).count();
         
-
-        //cout << points_detected << endl;
+        imshow("Normal", img_ellipses);
         
         if(rms==-1){
             rview = img_ellipses.clone();
-            //imshow("final",img_ellipses);
             if(total_frames% DELAY_TIME == 0 && points_detected == REAL_NUM_CTRL_PTS){
-//                string s ="/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/captures/cap-"+to_string(frame_time)+".jpg";
-//                imwrite(s,img_ellipses);
-
                 vector<Point2f> buffer = ellipses2Points(control_points) ;
-                
                 imagePoints.push_back(buffer);
-                //cout<<"CONTROL POINTS: "<<control_points.size()<<endl;
                 for (int i=0; i<buffer.size(); i++) {
                     cout<<"("<<buffer[i].x<<buffer[i].y<<") - ";
                 }
@@ -791,65 +768,163 @@ int main()
                     cout << "cameraMatrix " << cameraMatrix << endl;
                     cout << "distCoeffs " << distCoeffs << endl;
                     cout << "rms: " << rms << endl;
-
-                        
-                            //if( c  == ESC_KEY || c == 'q' || c == 'Q' )
-                                //break;
-                        //}
-                    
-                    //break;
                 }
             }
         }
         else
         {
-
             Mat map1, map2;
             initUndistortRectifyMap(cameraMatrix, distCoeffs, Mat(),
-            getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, imageSize, 1, imageSize, 0),
-            imageSize, CV_16SC2, map1, map2);
-
-        //for(int i = 0; i < (int)s.imageList.size(); i++ )
-        //{
+                                    getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, imageSize, 1, imageSize, 0),
+                                    imageSize, CV_16SC2, map1, map2);
+            
+            //for(int i = 0; i < (int)s.imageList.size(); i++ )
+            //{
             if(img_ellipses.empty())
                 continue;
             remap(img_ellipses, rview, map1, map2, INTER_LINEAR);
-            //imshow("final", rview);
+            imshow("final", rview);
             char c = (char)waitKey(1);
         }
-//         Mat m_calibration = Mat::zeros(Size(h, w), CV_8UC3);
-//         for (int i = 0; i < imagePoints.size(); i++) {
-//             for (int j = 0; j < 20; j++) {
-//                 circle(m_calibration, imagePoints[i][j], 10, yellow);
-//             }
-//         }
-//         imshow("Calibration", m_calibration);
         
-        cvtColor(frame_preprocessed,frame_preprocessed, COLOR_GRAY2RGB);
+        //        cvtColor(frame_preprocessed,frame_preprocessed, COLOR_GRAY2RGB);
         //imshow("other",frame_preprocessed);
         //ShowManyImages("resultado", n_fails, total_frames, 4, frame, frame_preprocessed, img_circles, img_ellipses);
-        ShowManyImages("resultado", n_fails, total_frames, rms, cameraMatrix, 4, frame, frame_preprocessed, img_ellipses, rview);
-        /*if(total_frames == 3100)//213
-         {
-         if(waitKey(5000) == 27)
-         {
-         break;
-         }
-         }
-         else
-         if(waitKey(2) == 27)
-         {
-         break;
-         }*/
+        //        ShowManyImages("resultado", n_fails, total_frames, rms, cameraMatrix, 4, frame, frame_preprocessed, img_ellipses, rview);
         
         if(waitKey(1) == 27)
         {
             break;
         }
     }
-    
     cout<<"# fails: "<<n_fails<<" of: "<<total_frames<<endl;
     cout<<"# frames: "<<total_frames<<" time: "<<duration<<endl;
+}
+
+/*
+ * Iterative Refinement functions
+ *
+ */
+void select_frames_by_time(VideoCapture& cap, vector<Mat>& out_frames_selected, int delay_time,int num_frames_for_calibration){
+    //util for save frame
+    cout << "Choosing frames by time... \n";
+    float frame_time = 0;
+    int points_detected = 0;
+    int frame_count = 0; //current frame
+    int n_fails = 0;
+    //found pattern points
+    vector<P_Ellipse> control_points;
+    
+    while (1) {
+        Mat frame, rview;
+        cap>>frame;
+        if (frame.empty()) {
+            cout << "Cannot capture frame. \n";
+            break;
+        }
+        //name for save frame
+        frame_time = cap.get(CV_CAP_PROP_POS_MSEC)/1000;
+        //count frame
+        frame_count++;
+        
+        Mat frame_preprocessed;
+        preprocessing_frame(&frame, &frame_preprocessed);
+        Mat img_ellipses = frame.clone();
+        points_detected = find_ellipses(&frame_preprocessed, &img_ellipses,control_points,frame_time,&n_fails);
+        
+        if(frame_count% delay_time == 0 && points_detected == REAL_NUM_CTRL_PTS){
+            out_frames_selected.push_back(frame);
+            if(out_frames_selected.size()==num_frames_for_calibration){
+                break;
+            }
+        }
+    }
+}
+
+void create_real_pattern(Size frame_size, vector<Point3f>& out_real_centers){
+    cout << "Creating real pattern... \n";
+    int h = frame_size.height;
+    int w = frame_size.width;
+    float desp_w = h * 0.2;
+    float desp_h = w * 0.2;
+    float squareSize = w / 5.5;
+    
+    for ( int i = 0; i < PATTERN_NUM_ROWS; i++ ) {
+        for ( int j = 0; j < PATTERN_NUM_COLS; j++ ) {
+            out_real_centers.push_back(Point3f(  float(j * squareSize + desp_w) ,
+                                               float( w - (i * squareSize + desp_h)), 0));
+        }
+    }
+}
+
+int find_control_points(Mat& frame,Mat& output,vector<P_Ellipse>& out_control_points){
+    
+    Mat frame_preprocessed;
+    preprocessing_frame(&frame, &frame_preprocessed);
+    output = frame.clone();
+    //(Mat* img_preprocessing, Mat* img_out, vector<P_Ellipse>& control_points, float frame_time = 0,int* n_fails=0)
+    int points_detected = find_ellipses(&frame_preprocessed, &output,out_control_points);
+    return points_detected;
+}
+/*******************************************************************************/
+
+int main()
+{
+    //    string path_data = "cam2/";
+    //string path_data = "/home/david/Escritorio/calib-data/";
+    string path_data = "/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/";
+    string video_file = path_data+"cam2/anillos.mp4";
+    
+    VideoCapture cap;
+    cap.open(video_file);
+    if ( !cap.isOpened() ){
+        cout << "Cannot open the video file. \n";
+        return -1;
+    }
+    //initial frame for get size of frames
+    Mat frame;
+    cap.read(frame);
+    int w = frame.rows;
+    int h = frame.cols;
+    Size frameSize(h, w);
+    
+    vector<Mat> selected_frames;
+    int delay_time = 50;
+    int num_frames_for_calibration = 45;
+    select_frames_by_time(cap, selected_frames,delay_time,num_frames_for_calibration);
+    
+    vector<Point3f> real_centers;
+    create_real_pattern(frameSize, real_centers);
+    
+    //first calibration
+    vector<vector<Point2f>> imagePoints;
+    Mat cameraMatrix;
+    Mat distCoeffs = Mat::zeros(8, 1, CV_64F);
+    vector<P_Ellipse> control_points;
+    int num_control_points=0;
+    double rms=-1;
+    Mat output_img_control_points;
+    
+    for (int i=0; i<selected_frames.size(); i++) {
+        control_points.clear();
+        num_control_points = find_control_points(selected_frames[i], output_img_control_points,control_points);
+        imshow("img"+to_string(i), output_img_control_points);
+        if(num_control_points == REAL_NUM_CTRL_PTS){
+            vector<Point2f> buffer = ellipses2Points(control_points) ;
+            imagePoints.push_back(buffer);
+        }
+    }
+    if(imagePoints.size()==selected_frames.size()){
+        cout << "First calibration... \n";
+        rms = calibrate_camera(frameSize, cameraMatrix, distCoeffs, imagePoints);
+        cout << "cameraMatrix " << cameraMatrix << endl;
+        cout << "distCoeffs " << distCoeffs << endl;
+        cout << "rms: " << rms << endl;
+    }
+    
+    //
+    
+    
     return 0;
 }
 
