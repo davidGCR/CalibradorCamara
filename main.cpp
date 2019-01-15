@@ -868,12 +868,20 @@ int find_control_points(Mat& frame,Mat& output,vector<P_Ellipse>& out_control_po
 }
 /*******************************************************************************/
 
+void save_frame(String data_path, string name,Mat& frame){
+    string s = data_path +name+".jpg";
+    imwrite(s,frame);
+}
+
+void fronto_parallel_images(vector<Mat>& selected_frames,vector<Point3f> real_centers,Size frameSize, 
+                            Mat& cameraMatrix, Mat& distCoeffs);
+
 int main()
 {
     //    string path_data = "cam2/";
-    //string path_data = "/home/david/Escritorio/calib-data/";
-    string path_data = "/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/";
-    string video_file = path_data+"cam2/anillos.mp4";
+    string path_data = "/home/david/Escritorio/calib-data/";
+    //string path_data = "/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/";
+    string video_file = path_data+"cam2/anillos.avi";
     
     VideoCapture cap;
     cap.open(video_file);
@@ -908,7 +916,7 @@ int main()
     for (int i=0; i<selected_frames.size(); i++) {
         control_points.clear();
         num_control_points = find_control_points(selected_frames[i], output_img_control_points,control_points);
-        imshow("img"+to_string(i), output_img_control_points);
+        // imshow("img"+to_string(i), output_img_control_points);
         if(num_control_points == REAL_NUM_CTRL_PTS){
             vector<Point2f> buffer = ellipses2Points(control_points) ;
             imagePoints.push_back(buffer);
@@ -922,9 +930,75 @@ int main()
         cout << "rms: " << rms << endl;
     }
     
-    //
+    //undistort first 
+    Mat map1, map2;
+    initUndistortRectifyMap(cameraMatrix, distCoeffs, Mat(),getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, 
+        frameSize, 1, frameSize, 0),frameSize, CV_16SC2, map1, map2);
+
+    Mat undistorted_image = frame.clone();
+    remap(output_img_control_points, undistorted_image, map1, map2, INTER_LINEAR);
+    imshow("undisorted image", undistorted_image);
+    
+    fronto_parallel_images(selected_frames,real_centers,frameSize,cameraMatrix,distCoeffs);
+    
     
     
     return 0;
+}
+
+void fronto_parallel_images(vector<Mat>& selected_frames,vector<Point3f> real_centers,Size frameSize, 
+                            Mat& cameraMatrix, Mat& distCoeffs){
+    vector<vector<Point2f>> imagePoints;
+    // Mat cameraMatrix;
+    // Mat distCoeffs = Mat::zeros(8, 1, CV_64F);
+    vector<P_Ellipse> control_points;
+    int num_control_points=0;
+    double rms=-1;
+    Mat output_img_control_points;
+    Mat frame;
+    Mat img_fronto_parallel;
+    string path_data = "/home/david/Escritorio/calib-data/frames/";
+
+    for (int i=0; i<selected_frames.size(); i++) {
+        control_points.clear();
+        imagePoints.clear();
+
+        frame = selected_frames[i].clone();
+        
+
+        num_control_points = find_control_points(frame, output_img_control_points,control_points);
+        // imshow("img"+to_string(i), output_img_control_points);
+        if(num_control_points == REAL_NUM_CTRL_PTS){
+            vector<Point2f> buffer = ellipses2Points(control_points) ;
+            imagePoints.push_back(buffer);
+        }
+
+        //undistort
+        cout << "Undistort image ... "<< endl;
+        Mat map1, map2;
+        initUndistortRectifyMap(cameraMatrix, distCoeffs, Mat(),getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, 
+        frameSize, 1, frameSize, 0),frameSize, CV_16SC2, map1, map2);
+
+        Mat undistorted_image = frame.clone();
+        remap(output_img_control_points, undistorted_image, map1, map2, INTER_LINEAR);
+
+        //unproject
+        cout << "Unproject image ... "<< endl;
+        vector<Point2f> control_points_2d = ellipses2Points(control_points);
+
+        Mat homography = findHomography(control_points_2d,real_centers);
+        Mat inv_homography = findHomography(real_centers,control_points_2d);
+
+        img_fronto_parallel = frame.clone();
+        warpPerspective(undistorted_image, img_fronto_parallel, homography, frameSize);
+        // imshow("fronto paralell",img_fronto_parallel);
+
+        save_frame(path_data,"raw",output_img_control_points);
+        save_frame(path_data,"fronto",img_fronto_parallel);
+        break;
+    }
+
+    
+
 }
 
