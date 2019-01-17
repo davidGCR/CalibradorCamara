@@ -893,43 +893,45 @@ void select_frames(VideoCapture& cap, vector<Mat>& out_frames_selected, int w, i
         circle(real_points_img, quadrants[i].qcenter(), radio, rose, 2);
     }
     save_frame(PATH_DATA_FRAMES,"quadrants image", real_points_img);
-
-// //    cout << "Choosing frames by time... \n";
-// //    float frame_time = 0;
-//    int points_detected = 0;
-// //    int frame_count = 0; //current frame
-// //    int n_fails = 0;
-// //    //found pattern points
-//    vector<P_Ellipse> control_points;
-//    Point2f center;
-// //
-//    while (1) {
-//        Mat frame, rview;
-//        cap>>frame;
-//        if (frame.empty()) {
-//            cout << "Cannot capture frame. \n";
-//            break;
-//        }
-
-//        Mat frame_preprocessed;
-//        preprocessing_frame(&frame, &frame_preprocessed);
-//        Mat img_ellipses = frame.clone();
-//        points_detected = find_ellipses(&frame_preprocessed, &img_ellipses,control_points);
-//        if(points_detected == REAL_NUM_CTRL_PTS){
-//            center.x = (control_points[0].x + control_points[19].x)/2;
-//            center.y = (control_points[0].y + control_points[19].y)/2;
-
-//        }
-
-//     //    if(frame_count% delay_time == 0 && points_detected == REAL_NUM_CTRL_PTS){
-//     //        out_frames_selected.push_back(frame);
-//     //        if(out_frames_selected.size()==num_frames_for_calibration){
-//     //            break;
-//     //        }
-//     //    }
-//    }
 }
 
+void distortPoints(vector<Point2f>& undistortedPoints, vector<Point2f>& distortedPoints, 
+        Mat cameraMatrix, Mat distCoef){
+    
+    double fx = cameraMatrix.at<double>(0, 0);
+	double fy = cameraMatrix.at<double>(1, 1);
+	double cx = cameraMatrix.at<double>(0, 2);
+	double cy = cameraMatrix.at<double>(1, 2);
+	double k1 = distCoef.at<double>(0, 0);
+	double k2 = distCoef.at<double>(0, 1);
+	double p1 = distCoef.at<double>(0, 2);
+	double p2 = distCoef.at<double>(0, 3);
+	double k3 = distCoef.at<double>(0, 4);
+
+    double x;
+	double y;
+	double r2;
+	double xDistort;
+	double yDistort;
+	for (int p = 0; p < undistortedPoints.size(); p++) {
+		x = (undistortedPoints[p].x - cx) / fx;
+		y = (undistortedPoints[p].y - cy) / fy;
+		r2 = x * x + y * y;
+
+		// Radial distorsion
+		xDistort = x * (1 + k1 * r2 + k2 * pow(r2, 2) + k3 * pow(r2, 3));
+		yDistort = y * (1 + k1 * r2 + k2 * pow(r2, 2) + k3 * pow(r2, 3));
+
+		// Tangential distorsion
+		xDistort = xDistort + (2 * p1 * x * y + p2 * (r2 + 2 * x * x));
+		yDistort = yDistort + (p1 * (r2 + 2 * y * y) + 2 * p2 * x * y);
+
+		// Back to absolute coordinates.
+		xDistort = xDistort * fx + cx;
+		yDistort = yDistort * fy + cy;
+		distortedPoints[p] = Point2f(xDistort, yDistort);
+	}
+}
 
 void plot_control_points(Mat& img_in, Mat& img_out, vector<Point2f>& control_points,Scalar color){
     img_out = img_in.clone();
@@ -947,10 +949,10 @@ void create_real_pattern(int h, int w, vector<Point3f>& out_real_centers){
     out_real_centers.push_back(Point3f(  float(margin_w) ,float( w-margin_h), 0));
     out_real_centers.push_back(Point3f(  float(h-margin_w) ,float( w-margin_h), 0));
 
-    // float avance_x = abs(out_real_centers[1].x-out_real_centers[0].x)/5;
-    // float avance_y = abs(out_real_centers[0].y-out_real_centers[15].y)/4;
+    // float avance_x = abs(out_real_centers[1].x-out_real_centers[0].x)/4;
+    // float avance_y = abs(out_real_centers[0].y-out_real_centers[15].y)/3;
 
-    // cout<<"avance x: "<<avance_x<<endl;
+    // // cout<<"avance x: "<<avance_x<<endl;
 
     // out_real_centers.pop_back();
     // out_real_centers.pop_back();
@@ -962,7 +964,7 @@ void create_real_pattern(int h, int w, vector<Point3f>& out_real_centers){
     //          out_real_centers.push_back(Point3f(  float(margin_w + j*avance_x) ,
     //                                             float( margin_h), 0));
     //     }
-    // // }
+    // }
     //plot real control points
     Mat real_points_img = Mat::zeros(Size(h,w), CV_8UC3);
     for(int i=0;i<out_real_centers.size();i++){
@@ -1010,7 +1012,7 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
     
     // Mat cameraMatrix;
     // Mat distCoeffs = Mat::zeros(8, 1, CV_64F);
-    vector<P_Ellipse> control_points;
+    vector<P_Ellipse> control_points_undistort;
     vector<P_Ellipse> fronto_control_points;
     
     int num_control_points=0;
@@ -1026,7 +1028,7 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
     
     for (int i=0; i<selected_frames.size(); i++) {
 //        cout << "============================IMAGE  "<<i<< endl;
-        control_points.clear();
+        control_points_undistort.clear();
         
         frame = selected_frames[i].clone();
         output_img_control_points = frame.clone();
@@ -1044,22 +1046,22 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
         save_frame(PATH_DATA_FRAMES+"2-cp_undisorted/","undist: iter-"+to_string(iteration)+"-frm-"+to_string(i),undistorted_image);
         
         /**************** detect control points in undistorted image *********************/
-        int n_ctrl_points_undistorted = find_control_points(undistorted_image, output_img_control_points,control_points,iteration,i,true);
+        int n_ctrl_points_undistorted = find_control_points(undistorted_image, output_img_control_points,control_points_undistort,iteration,i,true);
         
         if(n_ctrl_points_undistorted != REAL_NUM_CTRL_PTS){
             continue;
         }
-        vector<Point2f> control_points2f = ellipses2Points(control_points);
+        vector<Point2f> control_points_undistort2f = ellipses2Points(control_points_undistort);
         //        plot_control_points(output_img_control_points,output_img_control_points,control_points_centers,yellow);
         /**************** unproject*********************/
         // cout << "Unproject image ... "<< endl;
         // vector<Point2f> control_points_2d = ellipses2Points(control_points);
         
         vector<Point2f> control_points_2d;
-        control_points_2d.push_back(control_points[15].center());
-        control_points_2d.push_back(control_points[19].center());
-        control_points_2d.push_back(control_points[0].center());
-        control_points_2d.push_back(control_points[4].center());
+        control_points_2d.push_back(control_points_undistort[15].center());
+        control_points_2d.push_back(control_points_undistort[19].center());
+        control_points_2d.push_back(control_points_undistort[0].center());
+        control_points_2d.push_back(control_points_undistort[4].center());
         
         Mat homography = findHomography(control_points_2d,real_centers);
         Mat inv_homography = findHomography(real_centers,control_points_2d);
@@ -1086,15 +1088,16 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
             vector<Point2f> reprojected_points;
             perspectiveTransform(control_points_fronto_images, reprojected_points, inv_homography);
             
-            avg_control_points(control_points2f, reprojected_points);
-//            vector<Point2f> reprojected_points_distort(REAL_NUM_CTRL_PTS);
-//            distortPoints(reprojected_points, reprojected_points_distort, cameraMatrix, distCoeffs);
-            imagePoints.push_back(reprojected_points);
+            avg_control_points(control_points_undistort2f, reprojected_points);
+
+            vector<Point2f> reprojected_points_distort(REAL_NUM_CTRL_PTS);
+            distortPoints(reprojected_points, reprojected_points_distort, cameraMatrix, distCoeffs);
+            imagePoints.push_back(reprojected_points_distort);
             
-            plot_control_points(reprojected_image,reprojected_image,reprojected_points,green);
-            plot_control_points(undistorted_image,reprojected_image,control_points2f,red);
+            plot_control_points(undistorted_image,reprojected_image,control_points_undistort2f,green);
+            plot_control_points(reprojected_image,reprojected_image,reprojected_points_distort,red);
             
-            save_frame(PATH_DATA_FRAMES+"5-reprojected/","iter-"+to_string(iteration)+"-frm-"+to_string(i),reprojected_image);
+            save_frame(PATH_DATA_FRAMES+"5-reprojected/","rep_iter-"+to_string(iteration)+"-frm-"+to_string(i),reprojected_image);
             
             // cout << "Found Control points in frame: size:  "<<imagePoints.size()<< endl;
         }
