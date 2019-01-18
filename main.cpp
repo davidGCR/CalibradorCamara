@@ -587,7 +587,7 @@ void ShowManyImages(string title, int n_fails, int total_frames, float rms_first
        all_img = va_arg(args, cv::Mat);
 
        if(all_img.empty()) {
-           printf("Invalid arguments");
+           //printf("Invalid arguments");
            return;
        }
 
@@ -943,11 +943,31 @@ void create_real_pattern(int h, int w, vector<Point3f>& out_real_centers){
     
     float margin_h = 50;
     float margin_w = 90;
+    float distance_points = 110;
     out_real_centers.clear();
-    out_real_centers.push_back(Point3f(  float(margin_w) ,float( margin_h), 0));
-    out_real_centers.push_back(Point3f(  float(h-margin_w) ,float( margin_h), 0));
-    out_real_centers.push_back(Point3f(  float(margin_w) ,float( w-margin_h), 0));
-    out_real_centers.push_back(Point3f(  float(h-margin_w) ,float( w-margin_h), 0));
+    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*0) ,float( margin_h), 0));
+    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*1) ,float( margin_h), 0));
+    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*2) ,float( margin_h), 0));
+    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*3) ,float( margin_h), 0));
+    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*4) ,float( margin_h), 0));
+
+    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*0) ,float( margin_h+distance_points*1), 0));
+    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*1) ,float( margin_h+distance_points*1), 0));
+    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*2) ,float( margin_h+distance_points*1), 0));
+    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*3) ,float( margin_h+distance_points*1), 0));
+    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*4) ,float( margin_h+distance_points*1), 0));
+
+    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*0) ,float( margin_h+distance_points*2), 0));
+    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*1) ,float( margin_h+distance_points*2), 0));
+    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*2) ,float( margin_h+distance_points*2), 0));
+    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*3) ,float( margin_h+distance_points*2), 0));
+    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*4) ,float( margin_h+distance_points*2), 0));    
+
+    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*0) ,float( margin_h+distance_points*3), 0));
+    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*1) ,float( margin_h+distance_points*3), 0));
+    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*2) ,float( margin_h+distance_points*3), 0));
+    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*3) ,float( margin_h+distance_points*3), 0));
+    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*4) ,float( margin_h+distance_points*3), 0));
 
     // float avance_x = abs(out_real_centers[1].x-out_real_centers[0].x)/4;
     // float avance_y = abs(out_real_centers[0].y-out_real_centers[15].y)/3;
@@ -1058,10 +1078,32 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
         // vector<Point2f> control_points_2d = ellipses2Points(control_points);
         
         vector<Point2f> control_points_2d;
+
         control_points_2d.push_back(control_points_undistort[15].center());
+        control_points_2d.push_back(control_points_undistort[16].center());
+        control_points_2d.push_back(control_points_undistort[17].center());
+        control_points_2d.push_back(control_points_undistort[18].center());
         control_points_2d.push_back(control_points_undistort[19].center());
+
+        control_points_2d.push_back(control_points_undistort[10].center());
+        control_points_2d.push_back(control_points_undistort[11].center());
+        control_points_2d.push_back(control_points_undistort[12].center());
+        control_points_2d.push_back(control_points_undistort[13].center());
+        control_points_2d.push_back(control_points_undistort[14].center());
+        
+        control_points_2d.push_back(control_points_undistort[5].center());
+        control_points_2d.push_back(control_points_undistort[6].center());
+        control_points_2d.push_back(control_points_undistort[7].center());
+        control_points_2d.push_back(control_points_undistort[8].center());
+        control_points_2d.push_back(control_points_undistort[9].center());
+
         control_points_2d.push_back(control_points_undistort[0].center());
+        control_points_2d.push_back(control_points_undistort[1].center());
+        control_points_2d.push_back(control_points_undistort[2].center());
+        control_points_2d.push_back(control_points_undistort[3].center());
         control_points_2d.push_back(control_points_undistort[4].center());
+
+
         
         Mat homography = findHomography(control_points_2d,real_centers);
         Mat inv_homography = findHomography(real_centers,control_points_2d);
@@ -1184,7 +1226,7 @@ int main()
 
     /************************ Points Refinement **********************************/
     vector<Mat> fronto_images;
-    int No_ITER = 6;
+    int No_ITER = 10;
     for(int i=0; i<No_ITER;i++){
         fronto_images.clear();
         imagePoints.clear();
@@ -1235,7 +1277,7 @@ int main()
         int n_ctrl_points_undistorted = find_control_points(undistorted_image, output_img_control_points,control_points);
         
         if(n_ctrl_points_undistorted == REAL_NUM_CTRL_PTS){
-            cout << " ====================================================== "<< endl;
+            //cout << " ====================================================== "<< endl;
             vector<Point2f> control_points2f = ellipses2Points(control_points);
             //        plot_control_points(output_img_control_points,output_img_control_points,control_points_centers,yellow);
             /**************** unproject*********************/
@@ -1244,8 +1286,27 @@ int main()
             
             vector<Point2f> control_points_2d;
             control_points_2d.push_back(control_points[15].center());
+            control_points_2d.push_back(control_points[16].center());
+            control_points_2d.push_back(control_points[17].center());
+            control_points_2d.push_back(control_points[18].center());
             control_points_2d.push_back(control_points[19].center());
+
+            control_points_2d.push_back(control_points[10].center());
+            control_points_2d.push_back(control_points[11].center());
+            control_points_2d.push_back(control_points[12].center());
+            control_points_2d.push_back(control_points[13].center());
+            control_points_2d.push_back(control_points[14].center());
+            
+            control_points_2d.push_back(control_points[5].center());
+            control_points_2d.push_back(control_points[6].center());
+            control_points_2d.push_back(control_points[7].center());
+            control_points_2d.push_back(control_points[8].center());
+            control_points_2d.push_back(control_points[9].center());
+
             control_points_2d.push_back(control_points[0].center());
+            control_points_2d.push_back(control_points[1].center());
+            control_points_2d.push_back(control_points[2].center());
+            control_points_2d.push_back(control_points[3].center());
             control_points_2d.push_back(control_points[4].center());
             
             Mat homography = findHomography(control_points_2d,real_centers);
@@ -1260,6 +1321,7 @@ int main()
         }  
 
         //imshow("Image View", rview);
+        //equalizeHist(img_fronto_parallel, img_fronto_parallel);
         ShowManyImages("resultado", 2, 3, rms_first, rms, cameraMatrix, 4, frame2, img_fronto_parallel, undistorted_image_first,undistorted_image);
             // waitKey(2);
         if(waitKey(1) == 27)
