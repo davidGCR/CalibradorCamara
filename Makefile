@@ -3,4 +3,3 @@ all:
 exec:
 	g++ -ggdb camera_calibration.cpp -o chess -std=c++11 `pkg-config --cflags --libs opencv`
 	
-	

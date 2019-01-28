@@ -1,3 +1,4 @@
+
 // ////
 // ////  main.cpp
 // ////  testOpencv
@@ -238,89 +239,143 @@ void save_frame(String data_path, string name,Mat& frame){
     imwrite(s,frame);
 }
 
-void select_frames(VideoCapture& cap, vector<Mat>& out_frames_selected, int w, int h,int n_quads_rows=3,int num_quads_cols=3){
-    //util for save frame
-    float x_quad_lenght = float(h)/float(num_quads_cols);
-    float y_quad_lenght = float(w)/float(n_quads_rows);
+void plot_quadrants(Mat& frame,Size f_size,vector<Quadrant> quadrants,int radio){
+    //Quadrants plotting
+    frame = Mat::zeros(f_size, CV_8UC3);
     
+    for (int i=0; i<quadrants.size(); i++) {
+        circle(frame, quadrants[i].c_center, radio, rose, 2);
+        putText(frame, to_string(quadrants[i].frames_count), quadrants[i].c_center, FONT_HERSHEY_COMPLEX_SMALL, 1, white, 1);
+    }
+}
 
-    cout<<"tesssssss: x: "<<x_quad_lenght<<endl;
-
+void select_frames(VideoCapture& cap, vector<Mat>& out_frames_selected, Size f_size,int no_frames_desired,int n_quads_rows=3,int num_quads_cols=4){
+    //util for save frame
+    float x_quad_lenght = float(f_size.width)/float(num_quads_cols);
+    float y_quad_lenght = float(f_size.height)/float(n_quads_rows);
+    
+    cout<<"===== BUILD QUADRANTS ======"<<endl;
+    cout<<"h: "<<f_size.height<<", w: "<<f_size.width<<endl;
+    
+    /*********************************************************************************************++*/
+    //Quadrants building
     vector<Quadrant> quadrants;
+    int space = 20;
+    int radio = y_quad_lenght/2 - space;
+    int total_quadrants = n_quads_rows * num_quads_cols;
+    
     for(int i=0;i<n_quads_rows;i++){
         for(int j=0;j<num_quads_cols;j++){
-            Quadrant quad(j*x_quad_lenght, i*y_quad_lenght, x_quad_lenght, y_quad_lenght);
+            Quadrant quad(j*x_quad_lenght, i*y_quad_lenght, x_quad_lenght, y_quad_lenght,radio);
             quadrants.push_back(quad);
         }
     }
-     cout<<"quadrants.size(): "<<quadrants.size()<<endl;
-
-    // Quadrant quad(0*x_quad_lenght, 0*y_quad_lenght, x_quad_lenght, y_quad_lenght);
-    // quadrants.push_back(quad);
-
-    // Quadrant quad1(1*x_quad_lenght, 0*y_quad_lenght, x_quad_lenght, y_quad_lenght);
-    // quadrants.push_back(quad1);
-
-    // Quadrant quad2(2*x_quad_lenght, 0*y_quad_lenght, x_quad_lenght, y_quad_lenght);
-    // quadrants.push_back(quad2);
-
-    // Quadrant quad(0*x_quad_lenght, 0*y_quad_lenght, x_quad_lenght, y_quad_lenght);
-    // quadrants.push_back(quad);
-
-    // Quadrant quad1(1*x_quad_lenght, 1*y_quad_lenght, x_quad_lenght, y_quad_lenght);
-    // quadrants.push_back(quad1);
-
-    // Quadrant quad2(2*x_quad_lenght, 2*y_quad_lenght, x_quad_lenght, y_quad_lenght);
-    // quadrants.push_back(quad2);
-
+    cout<<"quadrants.size(): "<<quadrants.size()<<endl;
     
-
-
-    //plot real control points
-    int radio = y_quad_lenght/2 - 5;
-    Mat real_points_img = Mat::zeros(Size(h,w), CV_8UC3);
-    for(int i=0;i<quadrants.size();i++){
-        circle(real_points_img, quadrants[i].qcenter(), radio, rose, 2);
+    Mat img_quadrants;
+    plot_quadrants(img_quadrants,f_size, quadrants,radio);
+    Mat img_quadrants_track = img_quadrants.clone();
+    /*********************************************************************************************++*/
+    
+    float frame_time = 0;
+    int points_detected = 0;
+    
+    int n_fails = 0;
+    vector<P_Ellipse> control_points;
+    Point2f pattern_center;
+    int delay_skip = 50;
+    int last_quadrant = -1;
+    int no_frames_by_quadrant = no_frames_desired/total_quadrants;
+    
+    
+    //    cap>>frame;
+    
+    for (int i = 0;1;i++) {
+        
+        //        cap.set(CAP_PROP_POS_FRAMES,start+i);
+        Mat frame;
+        cap>>frame;
+        if (frame.empty()) {
+            cout << "Cannot capture frame. \n";
+            break;
+        }
+        if(i%delay_skip){
+            Mat frame_preprocessed;
+            preprocessing_frame(&frame, &frame_preprocessed);
+            Mat img_ellipses = frame.clone();
+            points_detected = find_ellipses(&frame_preprocessed, &img_ellipses,control_points,frame_time,n_fails);
+            
+            cv::circle(img_quadrants_track, pattern_center, 2, green);
+            imshow("real ", img_ellipses);
+            imshow("track ", img_quadrants_track);
+            //
+            if(points_detected == REAL_NUM_CTRL_PTS){
+                pattern_center.x = (control_points[7].center().x + control_points[12].center().x)/2;
+                pattern_center.y = (control_points[7].center().y + control_points[12].center().y)/2;
+                
+                for (int k=0; k<quadrants.size(); k++) {
+                    if(quadrants[k].isInclude(pattern_center)){
+                        if(last_quadrant != k && quadrants[k].frames_count <= no_frames_by_quadrant){
+                            out_frames_selected.push_back(frame);
+                            quadrants[k].frames_count++;
+                            last_quadrant = k;
+                            plot_quadrants(img_quadrants, f_size,quadrants,radio);
+                            imshow("counts", img_quadrants);
+                            break;
+                        }
+                    }
+                }
+            }
+            
+        }
+        
+        
+        if(waitKey(1) == 27)
+        {
+            break;
+        }
     }
-    save_frame(PATH_DATA_FRAMES,"quadrants image", real_points_img);
+    
+    waitKey(1000);
+    //    save_frame(PATH_DATA,"quadrants image", real_points_img);
 }
 
-void distortPoints(vector<Point2f>& undistortedPoints, vector<Point2f>& distortedPoints, 
-        Mat cameraMatrix, Mat distCoef){
+void distortPoints(vector<Point2f>& undistortedPoints, vector<Point2f>& distortedPoints,
+                   Mat cameraMatrix, Mat distCoef){
     
     double fx = cameraMatrix.at<double>(0, 0);
-	double fy = cameraMatrix.at<double>(1, 1);
-	double cx = cameraMatrix.at<double>(0, 2);
-	double cy = cameraMatrix.at<double>(1, 2);
-	double k1 = distCoef.at<double>(0, 0);
-	double k2 = distCoef.at<double>(0, 1);
-	double p1 = distCoef.at<double>(0, 2);
-	double p2 = distCoef.at<double>(0, 3);
-	double k3 = distCoef.at<double>(0, 4);
-
+    double fy = cameraMatrix.at<double>(1, 1);
+    double cx = cameraMatrix.at<double>(0, 2);
+    double cy = cameraMatrix.at<double>(1, 2);
+    double k1 = distCoef.at<double>(0, 0);
+    double k2 = distCoef.at<double>(0, 1);
+    double p1 = distCoef.at<double>(0, 2);
+    double p2 = distCoef.at<double>(0, 3);
+    double k3 = distCoef.at<double>(0, 4);
+    
     double x;
-	double y;
-	double r2;
-	double xDistort;
-	double yDistort;
-	for (int p = 0; p < undistortedPoints.size(); p++) {
-		x = (undistortedPoints[p].x - cx) / fx;
-		y = (undistortedPoints[p].y - cy) / fy;
-		r2 = x * x + y * y;
-
-		// Radial distorsion
-		xDistort = x * (1 + k1 * r2 + k2 * pow(r2, 2) + k3 * pow(r2, 3));
-		yDistort = y * (1 + k1 * r2 + k2 * pow(r2, 2) + k3 * pow(r2, 3));
-
-		// Tangential distorsion
-		xDistort = xDistort + (2 * p1 * x * y + p2 * (r2 + 2 * x * x));
-		yDistort = yDistort + (p1 * (r2 + 2 * y * y) + 2 * p2 * x * y);
-
-		// Back to absolute coordinates.
-		xDistort = xDistort * fx + cx;
-		yDistort = yDistort * fy + cy;
-		distortedPoints[p] = Point2f(xDistort, yDistort);
-	}
+    double y;
+    double r2;
+    double xDistort;
+    double yDistort;
+    for (int p = 0; p < undistortedPoints.size(); p++) {
+        x = (undistortedPoints[p].x - cx) / fx;
+        y = (undistortedPoints[p].y - cy) / fy;
+        r2 = x * x + y * y;
+        
+        // Radial distorsion
+        xDistort = x * (1 + k1 * r2 + k2 * pow(r2, 2) + k3 * pow(r2, 3));
+        yDistort = y * (1 + k1 * r2 + k2 * pow(r2, 2) + k3 * pow(r2, 3));
+        
+        // Tangential distorsion
+        xDistort = xDistort + (2 * p1 * x * y + p2 * (r2 + 2 * x * x));
+        yDistort = yDistort + (p1 * (r2 + 2 * y * y) + 2 * p2 * x * y);
+        
+        // Back to absolute coordinates.
+        xDistort = xDistort * fx + cx;
+        yDistort = yDistort * fy + cy;
+        distortedPoints[p] = Point2f(xDistort, yDistort);
+    }
 }
 
 void plot_control_points(Mat& img_in, Mat& img_out, vector<Point2f>& control_points,Scalar color){
@@ -331,7 +386,7 @@ void plot_control_points(Mat& img_in, Mat& img_out, vector<Point2f>& control_poi
 }
 void create_real_pattern(int h, int w, vector<Point3f>& out_real_centers){
     
-    float margin_h = 50;//50
+    float margin_h = 70;//50
     float margin_w = 90;
     float distance_points = 110;
     out_real_centers.clear();
@@ -340,26 +395,26 @@ void create_real_pattern(int h, int w, vector<Point3f>& out_real_centers){
     out_real_centers.push_back(Point3f(  float(margin_w+distance_points*2) ,float( margin_h), 0));
     out_real_centers.push_back(Point3f(  float(margin_w+distance_points*3) ,float( margin_h), 0));
     out_real_centers.push_back(Point3f(  float(margin_w+distance_points*4) ,float( margin_h), 0));
-
+    
     out_real_centers.push_back(Point3f(  float(margin_w+distance_points*0) ,float( margin_h+distance_points*1), 0));
     out_real_centers.push_back(Point3f(  float(margin_w+distance_points*1) ,float( margin_h+distance_points*1), 0));
     out_real_centers.push_back(Point3f(  float(margin_w+distance_points*2) ,float( margin_h+distance_points*1), 0));
     out_real_centers.push_back(Point3f(  float(margin_w+distance_points*3) ,float( margin_h+distance_points*1), 0));
     out_real_centers.push_back(Point3f(  float(margin_w+distance_points*4) ,float( margin_h+distance_points*1), 0));
-
+    
     out_real_centers.push_back(Point3f(  float(margin_w+distance_points*0) ,float( margin_h+distance_points*2), 0));
     out_real_centers.push_back(Point3f(  float(margin_w+distance_points*1) ,float( margin_h+distance_points*2), 0));
     out_real_centers.push_back(Point3f(  float(margin_w+distance_points*2) ,float( margin_h+distance_points*2), 0));
     out_real_centers.push_back(Point3f(  float(margin_w+distance_points*3) ,float( margin_h+distance_points*2), 0));
-    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*4) ,float( margin_h+distance_points*2), 0));    
-
+    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*4) ,float( margin_h+distance_points*2), 0));
+    
     out_real_centers.push_back(Point3f(  float(margin_w+distance_points*0) ,float( margin_h+distance_points*3), 0));
     out_real_centers.push_back(Point3f(  float(margin_w+distance_points*1) ,float( margin_h+distance_points*3), 0));
     out_real_centers.push_back(Point3f(  float(margin_w+distance_points*2) ,float( margin_h+distance_points*3), 0));
     out_real_centers.push_back(Point3f(  float(margin_w+distance_points*3) ,float( margin_h+distance_points*3), 0));
     out_real_centers.push_back(Point3f(  float(margin_w+distance_points*4) ,float( margin_h+distance_points*3), 0));
-
-
+    
+    
     Mat real_points_img = Mat::zeros(Size(h,w), CV_8UC3);
     for(int i=0;i<out_real_centers.size();i++){
         circle(real_points_img, Point2f(out_real_centers[i].x,out_real_centers[i].y), 2, rose, 2);
@@ -373,11 +428,11 @@ int find_control_points(Mat& frame,Mat& output,vector<P_Ellipse>& out_control_po
     
     if(!PP_MODE) preprocessing_frame(&frame, &frame_preprocessed);
     else preprocessing_frame2(frame, frame_preprocessed);
-
+    
     if(n_frame!=-1 && iteration!=-1){
         save_frame(PATH_DATA_FRAMES+"preprocesed/","iter-"+to_string(iteration)+"-frm-"+to_string(n_frame),frame_preprocessed);
     }
-
+    
     output = frame.clone();
     int  points_detected = -1;
     int fails = 0;
@@ -422,7 +477,7 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
     int fails = 0;
     
     for (int i=0; i<selected_frames.size(); i++) {
- //        cout << "============================IMAGE  "<<i<< endl;
+        //        cout << "============================IMAGE  "<<i<< endl;
         control_points_undistort.clear();
         
         frame = selected_frames[i].clone();
@@ -453,13 +508,13 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
         // vector<Point2f> control_points_2d = ellipses2Points(control_points);
         
         vector<Point2f> control_points_2d;
-
+        
         control_points_2d.push_back(control_points_undistort[15].center());
         control_points_2d.push_back(control_points_undistort[16].center());
         control_points_2d.push_back(control_points_undistort[17].center());
         control_points_2d.push_back(control_points_undistort[18].center());
         control_points_2d.push_back(control_points_undistort[19].center());
-
+        
         control_points_2d.push_back(control_points_undistort[10].center());
         control_points_2d.push_back(control_points_undistort[11].center());
         control_points_2d.push_back(control_points_undistort[12].center());
@@ -471,14 +526,14 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
         control_points_2d.push_back(control_points_undistort[7].center());
         control_points_2d.push_back(control_points_undistort[8].center());
         control_points_2d.push_back(control_points_undistort[9].center());
-
+        
         control_points_2d.push_back(control_points_undistort[0].center());
         control_points_2d.push_back(control_points_undistort[1].center());
         control_points_2d.push_back(control_points_undistort[2].center());
         control_points_2d.push_back(control_points_undistort[3].center());
         control_points_2d.push_back(control_points_undistort[4].center());
-
-
+        
+        
         
         Mat homography = findHomography(control_points_2d,real_centers);
         Mat inv_homography = findHomography(real_centers,control_points_2d);
@@ -486,9 +541,9 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
         img_fronto_parallel = undistorted_image.clone();
         warpPerspective(undistorted_image, img_fronto_parallel, homography, frame.size());
         out_fronto_images.push_back(img_fronto_parallel);
-
+        
         // undistort(img_fronto_parallel, img_fronto_parallel, cameraMatrix, distCoeffs);
-
+        
         save_frame(PATH_DATA_FRAMES+"3-fronto/","fronto: iter-"+to_string(iteration)+"-frm-"+to_string(i),img_fronto_parallel);
         
         /**************** Localize control points in fronto parallel frame *********************/
@@ -506,7 +561,7 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
             perspectiveTransform(control_points_fronto_images, reprojected_points, inv_homography);
             
             avg_control_points(control_points_undistort2f, reprojected_points);
-
+            
             vector<Point2f> reprojected_points_distort(REAL_NUM_CTRL_PTS);
             distortPoints(reprojected_points, reprojected_points_distort, cameraMatrix, distCoeffs);
             imagePoints.push_back(reprojected_points_distort);
@@ -543,48 +598,55 @@ int debug_images_fronto()
     
     //initial frame for get size of frames
     Mat fronto_img, fronto_img_pre, fronto_img_ell;
-
+    
     vector<cv::String> fn;
     glob(PATH_DATA_FRAMES+"3-fronto/*.jpg", fn, false);
-
+    
     vector<Mat> images;
     size_t count = fn.size(); //total number  files in images folder
-
-    size_t n = 30; 
-
-    int fails = 0;
-    int points_detected;
-    vector<P_Ellipse> out_control_points;
-
-    for (size_t i=0; i<n; i++){
-        out_control_points.clear();
-        fronto_img = imread(fn[i]);
-        // cout<<"chanels : "<<fronto_img.channels()<<endl;
-        preprocessing_frame2(fronto_img,fronto_img_pre);
-        fronto_img_ell = fronto_img.clone();
-        points_detected = find_ellipses(&fronto_img_pre, &fronto_img_ell,out_control_points,0,fails);
-        cout<<"cp detected : "<<points_detected<<endl;
-
-        imshow("fronto",fronto_img);
-        imshow("preprocess",fronto_img_pre);
-        imshow("ellipses",fronto_img_ell);
-        // ShowManyImages("resultado", 2, 3, 0, 0, 4, fronto_img, fronto_img_pre, fronto_img,fronto_img);
-        // cout<<"file: "<<fn[i]<<endl;
-        if(waitKey(1000) == 27)
-        {
-            break;
-        }
+    
+    size_t n = 30;
+    
+    if (count>0) {
+        int fails = 0;
+        int points_detected;
+        vector<P_Ellipse> out_control_points;
         
+        for (size_t i=0; i<count; i++){
+            out_control_points.clear();
+            fronto_img = imread(fn[i]);
+            // cout<<"chanels : "<<fronto_img.channels()<<endl;
+            preprocessing_frame2(fronto_img,fronto_img_pre);
+            fronto_img_ell = fronto_img.clone();
+            points_detected = find_ellipses(&fronto_img_pre, &fronto_img_ell,out_control_points,0,fails);
+            cout<<"cp detected : "<<points_detected<<endl;
+            
+            imshow("fronto",fronto_img);
+            imshow("preprocess",fronto_img_pre);
+            imshow("ellipses",fronto_img_ell);
+            // ShowManyImages("resultado", 2, 3, 0, 0, 4, fronto_img, fronto_img_pre, fronto_img,fronto_img);
+            // cout<<"file: "<<fn[i]<<endl;
+            if(waitKey(1000) == 27)
+            {
+                break;
+            }
+            
+        }
+        return 1;
     }
-        // images.push_back(imread(fn[i]));
+    
+    cout<<"Houston, we have a problem: Not frames for debug..."<<endl;
+    return 0;
+    // images.push_back(imread(fn[i]));
 }
 
 int main()
 {
     
     //string path_data = "/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/";
-    // string video_file = PATH_DATA+"cam1/anillos.mp4";
-    string video_file = PATH_DATA+"cam2/anillos.avi";
+    string video_file = PATH_DATA+"cam1/anillos.mp4";
+    //    string video_file = PATH_DATA+"cam2/anillos.avi";
+    
     
     VideoCapture cap;
     cap.open(video_file);
@@ -604,100 +666,100 @@ int main()
     /********************** choose frames *****************************/
     vector<Mat> selected_frames;
     int delay_time = 55;
-    select_frames_by_time(cap, selected_frames,delay_time,NUM_FRAMES_FOR_CALIBRATION);
-    select_frames(cap,selected_frames,w,h);
-    //VideoCapture& cap, vector<Mat>& out_frames_selected, int w, int h,int n_quads_rows,int num_quads_cols
+    //    select_frames_by_time(cap, selected_frames,delay_time,NUM_FRAMES_FOR_CALIBRATION);
+    select_frames(cap,selected_frames,frameSize,48);
+    //    //VideoCapture& cap, vector<Mat>& out_frames_selected, int w, int h,int n_quads_rows,int num_quads_cols
+    //
+    //    cout << "Creating ideal image ... "<< endl;
+    //    vector<Point3f> real_centers;
+    //    create_real_pattern(h,w, real_centers);
+    //    //    load_object_points(h,w, real_centers);
+    //
+    //    /*************************first calibration**********************************/
+    //    vector<vector<Point2f>> imagePoints;
+    //    Mat cameraMatrix, cameraMatrix_first;
+    //    Mat distCoeffs = Mat::zeros(8, 1, CV_64F);
+    //    Mat distCoeffs_first = Mat::zeros(8, 1, CV_64F);
+    //    vector<P_Ellipse> control_points;
+    //    int num_control_points=0;
+    //    double rms=-1;
+    //    double rms_first=-1;
+    //    Mat output_img_control_points;
+    //
+    //    for (int i=0; i<selected_frames.size(); i++) {
+    //        control_points.clear();
+    //        num_control_points = find_control_points(selected_frames[i], output_img_control_points,control_points);
+    //        // imshow("img"+to_string(i), output_img_control_points);
+    //        if(num_control_points == REAL_NUM_CTRL_PTS){
+    //            vector<Point2f> buffer = ellipses2Points(control_points) ;
+    //            imagePoints.push_back(buffer);
+    //        }
+    //    }
+    //    if(imagePoints.size()==selected_frames.size()){
+    //        cout << "First calibration... \n";
+    //        rms = calibrate_camera(frameSize, cameraMatrix, distCoeffs, imagePoints);
+    //        cout << "cameraMatrix " << cameraMatrix << endl;
+    //        cout << "distCoeffs " << distCoeffs << endl;
+    //        cout << "rms: " << rms << endl;
+    //        rms_first = rms;
+    //        cameraMatrix_first = cameraMatrix.clone();
+    //        distCoeffs_first = distCoeffs;
+    //    }
+    //
+    //    /************************ Points Refinement **********************************/
+    //    vector<Mat> fronto_images;
+    //    int No_ITER = 1;
+    //    for(int i=0; i<No_ITER;i++){
+    //        fronto_images.clear();
+    //        imagePoints.clear();
+    //        fronto_parallel_images(selected_frames,fronto_images,frameSize,real_centers, cameraMatrix, distCoeffs,imagePoints,i);
+    //
+    //        /************************ Calibrate camera **********************************/
+    //        // cameraMatrix.release();
+    //        // distCoeffs.release();
+    //        if(imagePoints.size() > 0){
+    //            cout << "REFINEMENT ("<<i<<")"<<endl;
+    //            rms = calibrate_camera(frameSize, cameraMatrix, distCoeffs, imagePoints);
+    //            cout << "cameraMatrix " << cameraMatrix << endl;
+    //            cout << "distCoeffs " << distCoeffs << endl;
+    //            cout << "rms: " << rms << endl;
+    //        }
+    //    }
     
-    cout << "Creating ideal image ... "<< endl;
-    vector<Point3f> real_centers;
-    create_real_pattern(h,w, real_centers);
-//    load_object_points(h,w, real_centers);
+    //    debug_images_fronto();
     
-    /*************************first calibration**********************************/
-    vector<vector<Point2f>> imagePoints;
-    Mat cameraMatrix, cameraMatrix_first;
-    Mat distCoeffs = Mat::zeros(8, 1, CV_64F);
-    Mat distCoeffs_first = Mat::zeros(8, 1, CV_64F);
-    vector<P_Ellipse> control_points;
-    int num_control_points=0;
-    double rms=-1;
-    double rms_first=-1;
-    Mat output_img_control_points;
-
-    for (int i=0; i<selected_frames.size(); i++) {
-        control_points.clear();
-        num_control_points = find_control_points(selected_frames[i], output_img_control_points,control_points);
-        // imshow("img"+to_string(i), output_img_control_points);
-        if(num_control_points == REAL_NUM_CTRL_PTS){
-            vector<Point2f> buffer = ellipses2Points(control_points) ;
-            imagePoints.push_back(buffer);
-        }
-    }
-    if(imagePoints.size()==selected_frames.size()){
-        cout << "First calibration... \n";
-        rms = calibrate_camera(frameSize, cameraMatrix, distCoeffs, imagePoints);
-        cout << "cameraMatrix " << cameraMatrix << endl;
-        cout << "distCoeffs " << distCoeffs << endl;
-        cout << "rms: " << rms << endl;
-        rms_first = rms;
-        cameraMatrix_first = cameraMatrix.clone();
-        distCoeffs_first = distCoeffs;
-    }
-
-    /************************ Points Refinement **********************************/
-    vector<Mat> fronto_images;
-    int No_ITER = 1;
-    for(int i=0; i<No_ITER;i++){
-        fronto_images.clear();
-        imagePoints.clear();
-        fronto_parallel_images(selected_frames,fronto_images,frameSize,real_centers, cameraMatrix, distCoeffs,imagePoints,i);
-
-        /************************ Calibrate camera **********************************/
-        // cameraMatrix.release();
-        // distCoeffs.release();
-       if(imagePoints.size() > 0){
-            cout << "REFINEMENT ("<<i<<")"<<endl;
-            rms = calibrate_camera(frameSize, cameraMatrix, distCoeffs, imagePoints);
-            cout << "cameraMatrix " << cameraMatrix << endl;
-            cout << "distCoeffs " << distCoeffs << endl;
-            cout << "rms: " << rms << endl;
-       }
-    }
-
-    debug_images_fronto();
-
     // VideoCapture cap2;
     // cap2.open(video_file);
-
+    
     // namedWindow("Image View", CV_WINDOW_AUTOSIZE);
-
+    
     // if ( !cap.isOpened() )
     //     cout << "Cannot open the video file. \n";
     // while(1){
-
+    
     //     Mat frame2;
     //     cap2>>frame2;
-
+    
     //     if(frame2.empty())
     //         break;
-
+    
     // //First
     //     Mat undistorted_image_first, map1_first, map2_first;
     //     initUndistortRectifyMap(cameraMatrix_first, distCoeffs_first, Mat(),
     //     getOptimalNewCameraMatrix(cameraMatrix_first, distCoeffs_first, frameSize, 1, frameSize, 0),
     //     frameSize, CV_16SC2, map1_first, map2_first);
     //     remap(frame2, undistorted_image_first, map1_first, map2_first, INTER_LINEAR);
-     
+    
     //  //Last
     //     Mat undistorted_image, map1, map2, img_fronto_parallel;
     //     initUndistortRectifyMap(cameraMatrix, distCoeffs, Mat(),
     //     getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, frameSize, 1, frameSize, 0),
     //     frameSize, CV_16SC2, map1, map2);
     //     remap(frame2, undistorted_image, map1, map2, INTER_LINEAR);
-
-
+    
+    
     //     int n_ctrl_points_undistorted = find_control_points(undistorted_image, output_img_control_points,control_points);
-        
+    
     //     if(n_ctrl_points_undistorted == REAL_NUM_CTRL_PTS){
     //         //cout << " ====================================================== "<< endl;
     //         vector<Point2f> control_points2f = ellipses2Points(control_points);
@@ -705,43 +767,43 @@ int main()
     //         /**************** unproject*********************/
     //         // cout << "Unproject image ... "<< endl;
     //         // vector<Point2f> control_points_2d = ellipses2Points(control_points);
-            
+    
     //         vector<Point2f> control_points_2d;
     //         control_points_2d.push_back(control_points[15].center());
     //         control_points_2d.push_back(control_points[16].center());
     //         control_points_2d.push_back(control_points[17].center());
     //         control_points_2d.push_back(control_points[18].center());
     //         control_points_2d.push_back(control_points[19].center());
-
+    
     //         control_points_2d.push_back(control_points[10].center());
     //         control_points_2d.push_back(control_points[11].center());
     //         control_points_2d.push_back(control_points[12].center());
     //         control_points_2d.push_back(control_points[13].center());
     //         control_points_2d.push_back(control_points[14].center());
-            
+    
     //         control_points_2d.push_back(control_points[5].center());
     //         control_points_2d.push_back(control_points[6].center());
     //         control_points_2d.push_back(control_points[7].center());
     //         control_points_2d.push_back(control_points[8].center());
     //         control_points_2d.push_back(control_points[9].center());
-
+    
     //         control_points_2d.push_back(control_points[0].center());
     //         control_points_2d.push_back(control_points[1].center());
     //         control_points_2d.push_back(control_points[2].center());
     //         control_points_2d.push_back(control_points[3].center());
     //         control_points_2d.push_back(control_points[4].center());
-            
+    
     //         Mat homography = findHomography(control_points_2d,real_centers);
     //         Mat inv_homography = findHomography(real_centers,control_points_2d);
-            
+    
     //         img_fronto_parallel = undistorted_image.clone();
     //         warpPerspective(undistorted_image, img_fronto_parallel, homography, frame.size());
-
-    //     }    
+    
+    //     }
     //     else{
     //         cout << "NOT FOUND ... "<< endl;
-    //     }  
-
+    //     }
+    
     //     //imshow("Image View", rview);
     //     //equalizeHist(img_fronto_parallel, img_fronto_parallel);
     //     ShowManyImages("resultado", 2, 3, rms_first, rms, cameraMatrix, 4, frame2, img_fronto_parallel, undistorted_image_first,undistorted_image);
@@ -754,3 +816,5 @@ int main()
     
     return 0;
 }
+
+
