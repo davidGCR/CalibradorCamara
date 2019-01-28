@@ -17,12 +17,13 @@ public:
     float w;
     float c_radio;
     Point2f c_center;
-    int frames_count;
+    int capacity;
+    int frame_counter;
     
     Quadrant();
-    Quadrant(float x1,float y1,float w, float h, int radio);
+    Quadrant(float x1,float y1,float w, float h, int radio, int capacity);
     bool isInclude(Point2f p);
-    void build_circle();
+    void setRadio(float newradio);
     
 };
 
@@ -30,13 +31,17 @@ public:
 
 Quadrant::Quadrant(){}
 
-Quadrant::Quadrant(float x1,float y1,float w, float h,int radio):x1(x1),y1(y1),w(w),h(h),c_radio(radio){
+Quadrant::Quadrant(float x1,float y1,float w, float h,int radio, int capacity):x1(x1),y1(y1),w(w),h(h),c_radio(radio),capacity(capacity){
     c_center = Point2f((x1+x1+w)/2,(y1+y1+w)/2);
-    frames_count=0;
+    frame_counter = 0;
 }
 
 bool Quadrant::isInclude(Point2f p){
-    return (p.x > x1 && p.y > y1 && p.x < (x1+w) && p.y < (y1+h));
+    float distance = sqrt(pow((p.x-c_center.x),2)+pow((p.y-c_center.y),2));
+    // return (p.x > x1 && p.y > y1 && p.x < (x1+w) && p.y < (y1+h));
+    return (distance<c_radio);
 }
-
+void Quadrant::setRadio(float newradio){
+    c_radio = newradio;
+}
 

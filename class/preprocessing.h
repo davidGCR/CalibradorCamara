@@ -138,6 +138,7 @@ void segmentar(Mat &in, Mat &out, Mat adapThresh, int w, int h ) {
 
 
 void preprocessing_frame2(Mat& frame, Mat& frame_output){
+    // cout<<"preprocesing 2222222222"<<endl;
     Mat blur;
     Mat frame_gray;
     Mat frame_thresholding;
