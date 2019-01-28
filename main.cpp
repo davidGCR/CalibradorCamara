@@ -26,6 +26,7 @@
 #include "class/display.h"
 #include "class/preprocessing.h"
 #include "class/controlPointDetector.h"
+#include "class/utils.h"
 
 //#include <cv.h>
 #include <iostream>
@@ -408,7 +409,7 @@ void distortPoints(vector<Point2f>& undistortedPoints, vector<Point2f>& distorte
 }
 
 void plot_control_points(Mat& img_in, Mat& img_out, vector<Point2f>& control_points,Scalar color){
-    img_out = img_in.clone();
+    // img_out = img_in.clone();
     for(int i=0;i<control_points.size();i++){
         circle(img_out, control_points[i], 5, color, 0.5);
     }
@@ -496,6 +497,7 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
     // Mat cameraMatrix;
     // Mat distCoeffs = Mat::zeros(8, 1, CV_64F);
     vector<P_Ellipse> control_points_undistort;
+    vector<P_Ellipse> original_control_points;
     vector<P_Ellipse> fronto_control_points;
     
     int num_control_points=0;
@@ -513,6 +515,7 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
     for (int i=0; i<selected_frames.size(); i++) {
         //        cout << "============================IMAGE  "<<i<< endl;
         control_points_undistort.clear();
+        original_control_points.clear();
         
         frame = selected_frames[i].clone();
         output_img_control_points = frame.clone();
@@ -528,9 +531,12 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
         // remap(frame, undistorted_image, map1, map2, INTER_LINEAR);
         undistort(frame, undistorted_image, cameraMatrix, distCoeffs);
         
-        
+         /**************** detect control points in original image *********************/
+        int n_ctrl_points_original = find_control_points(frame, img_prep_proc,output_img_control_points,original_control_points,iteration,i,false);
+        vector<Point2f> original_control_points2f = ellipses2Points(original_control_points);
+
         /**************** detect control points in undistorted image *********************/
-        int n_ctrl_points_undistorted = find_control_points(undistorted_image, img_prep_proc,output_img_control_points,control_points_undistort,iteration,i,true);
+        int n_ctrl_points_undistorted = find_control_points(undistorted_image, img_prep_proc,output_img_control_points,control_points_undistort,iteration,i,false);
         save_frame(PATH_DATA_FRAMES+"2-undisorted/detected/","undist: iter-"+to_string(iteration)+"-frm-"+to_string(i),output_img_control_points);
         save_frame(PATH_DATA_FRAMES+"2-undisorted/preprocesed/","undist_prep: iter-"+to_string(iteration)+"-frm-"+to_string(i),img_prep_proc);
         
@@ -587,23 +593,29 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
         fronto_control_points.clear();
         output_img_fronto_control_points = img_fronto_parallel.clone();
         
-        num_control_points_fronto = find_control_points(img_fronto_parallel,img_prep_proc, output_img_fronto_control_points,fronto_control_points,iteration,i);
-        save_frame(PATH_DATA_FRAMES+"3-fronto/detected/","det_fronto: iter-"+to_string(iteration)+"-frm-"+to_string(i),output_img_fronto_control_points);
+        num_control_points_fronto = find_control_points(img_fronto_parallel,img_prep_proc, output_img_fronto_control_points,fronto_control_points,iteration,i,true);
+        
         
         /**************** Reproject control points to camera coordinates *********************/
         
         if(num_control_points_fronto==REAL_NUM_CTRL_PTS){
+            save_frame(PATH_DATA_FRAMES+"3-fronto/detected/","det_fronto: iter-"+to_string(iteration)+"-frm-"+to_string(i),output_img_fronto_control_points);
             vector<Point2f> control_points_fronto_images = ellipses2Points(fronto_control_points);
+
             vector<Point2f> reprojected_points;
             perspectiveTransform(control_points_fronto_images, reprojected_points, inv_homography);
             
-            avg_control_points(control_points_undistort2f, reprojected_points);
+            // 
             
             vector<Point2f> reprojected_points_distort(REAL_NUM_CTRL_PTS);
             distortPoints(reprojected_points, reprojected_points_distort, cameraMatrix, distCoeffs);
+
+            avg_control_points(original_control_points2f,reprojected_points_distort);
+
             imagePoints.push_back(reprojected_points_distort);
             
-            plot_control_points(undistorted_image,reprojected_image,control_points_undistort2f,green);
+            reprojected_image = frame.clone();
+            plot_control_points(undistorted_image,reprojected_image,original_control_points2f,green);
             plot_control_points(reprojected_image,reprojected_image,reprojected_points_distort,red);
             
             save_frame(PATH_DATA_FRAMES+"4-reprojected/","rep_iter-"+to_string(iteration)+"-frm-"+to_string(i),reprojected_image);
@@ -676,7 +688,10 @@ int debug_images_fronto()
     return 0;
     // images.push_back(imread(fn[i]));
 }
-
+// int main(){
+//     save_rmss();
+//     return 0;
+// }
 int main()
 {
     
@@ -697,6 +712,7 @@ int main()
     int h = frame.cols;
     int w = frame.rows;
     Size frameSize(h,w);
+    vector<float> rmss;
     
     cout<<"h: "<<h<<", w: "<<w<<" size: "<<frame.size()<<endl;
     
@@ -750,13 +766,14 @@ int main()
            cout << "distCoeffs " << distCoeffs << endl;
            cout << "rms: " << rms << endl;
            rms_first = rms;
+           rmss.push_back(rms);
            cameraMatrix_first = cameraMatrix.clone();
            distCoeffs_first = distCoeffs;
        }
     //
        /************************ Points Refinement **********************************/
        vector<Mat> fronto_images;
-       int No_ITER = 10;
+       int No_ITER = 15;
        for(int i=0; i<No_ITER;i++){
            fronto_images.clear();
            imagePoints.clear();
@@ -769,11 +786,13 @@ int main()
            if(imagePoints.size() > 0){
                cout << "REFINEMENT ("<<i<<")"<<endl;
                rms = calibrate_camera(frameSize, cameraMatrix, distCoeffs, imagePoints);
+               rmss.push_back(rms);
                cout << "cameraMatrix " << cameraMatrix << endl;
                cout << "distCoeffs " << distCoeffs << endl;
                cout << "rms: " << rms << endl;
            }
        }
+       save_rmss(selected_frames.size(),rmss);
     
     //    debug_images_fronto();
     

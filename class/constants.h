@@ -5,6 +5,10 @@
 //  Created by David Choqueluque Roman on 1/15/19.
 //  Copyright © 2019 David Choqueluque Roman. All rights reserved.
 //
+
+#ifndef constants_H
+#define constants_H
+
 #include <iostream>
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/highgui.hpp"
@@ -39,3 +43,4 @@ const Scalar white(255, 255, 255);
 const Scalar rose(255, 0, 255);
 const Scalar celeste(255, 255 , 0);
 const Scalar black(0, 0 , 0);
+#endif
