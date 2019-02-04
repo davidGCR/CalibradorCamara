@@ -27,6 +27,7 @@
 #include "class/preprocessing.h"
 #include "class/controlPointDetector.h"
 #include "class/utils.h"
+#include "class/iterativeCalibFunctions.h"
 
 //#include <cv.h>
 #include <iostream>
@@ -499,6 +500,8 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
     vector<P_Ellipse> control_points_undistort;
     vector<P_Ellipse> original_control_points;
     vector<P_Ellipse> fronto_control_points;
+
+    vector<Point2f> intersection_points;
     
     int num_control_points=0;
     int num_control_points_fronto=0;
@@ -516,6 +519,7 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
         //        cout << "============================IMAGE  "<<i<< endl;
         control_points_undistort.clear();
         original_control_points.clear();
+        intersection_points.clear();
         
         frame = selected_frames[i].clone();
         output_img_control_points = frame.clone();
@@ -534,6 +538,7 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
          /**************** detect control points in original image *********************/
         int n_ctrl_points_original = find_control_points(frame, img_prep_proc,output_img_control_points,original_control_points,iteration,i,false);
         vector<Point2f> original_control_points2f = ellipses2Points(original_control_points);
+        
 
         /**************** detect control points in undistorted image *********************/
         int n_ctrl_points_undistorted = find_control_points(undistorted_image, img_prep_proc,output_img_control_points,control_points_undistort,iteration,i,false);
@@ -599,24 +604,50 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
         /**************** Reproject control points to camera coordinates *********************/
         
         if(num_control_points_fronto==REAL_NUM_CTRL_PTS){
+            
+
             save_frame(PATH_DATA_FRAMES+"3-fronto/detected/","det_fronto: iter-"+to_string(iteration)+"-frm-"+to_string(i),output_img_fronto_control_points);
             vector<Point2f> control_points_fronto_images = ellipses2Points(fronto_control_points);
 
+            //find intersection point for each control point
+            Mat img_intersections = img_fronto_parallel.clone();
+            calculate_intersection(img_intersections,control_points_fronto_images,intersection_points);
+            save_frame(PATH_DATA_FRAMES+"3-fronto/intersections/","intersect_iter-"+to_string(iteration)+"-frm-"+to_string(i),img_intersections);
+
+            /********************************************* Control points in fronto image ****************************************************/
+            //REPROJECT: To camera coordinates
             vector<Point2f> reprojected_points;
             perspectiveTransform(control_points_fronto_images, reprojected_points, inv_homography);
             
-            // 
-            
+            //REPROJECT: Distort reprojected points
             vector<Point2f> reprojected_points_distort(REAL_NUM_CTRL_PTS);
             distortPoints(reprojected_points, reprojected_points_distort, cameraMatrix, distCoeffs);
 
-            avg_control_points(original_control_points2f,reprojected_points_distort);
+            /********************************************* Intersections ****************************************************/
+            //REPROJECT (intersections): To camera coordinates
+            vector<Point2f> reprojected_points_intersections;
+            perspectiveTransform(intersection_points, reprojected_points_intersections, inv_homography);
 
+            //REPROJECT (intersections): Distort reprojected intersections points
+            vector<Point2f> reprojected_points_intersections_distort(REAL_NUM_CTRL_PTS);
+            distortPoints(reprojected_points_intersections, reprojected_points_intersections_distort, cameraMatrix, distCoeffs);
+
+            ////Refinement: Normal
             imagePoints.push_back(reprojected_points_distort);
+
+            ////Refinement: Average
+            // avg_control_points(original_control_points2f,reprojected_points_distort);
+            // imagePoints.push_back(reprojected_points_distort);
+
+            ////Refinement Baricenter
+            // vector<Point2f> baricenters(REAL_NUM_CTRL_PTS);
+            // baricenter(original_control_points2f,reprojected_points_distort,reprojected_points_intersections_distort,baricenters);
+            // imagePoints.push_back(baricenters);
             
             reprojected_image = frame.clone();
             plot_control_points(undistorted_image,reprojected_image,original_control_points2f,green);
             plot_control_points(reprojected_image,reprojected_image,reprojected_points_distort,red);
+            plot_control_points(reprojected_image,reprojected_image,reprojected_points_intersections_distort,white);
             
             save_frame(PATH_DATA_FRAMES+"4-reprojected/","rep_iter-"+to_string(iteration)+"-frm-"+to_string(i),reprojected_image);
             
@@ -636,7 +667,7 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
 }
 /*******************************************************************************/
 
-Mat cameraMatrix;
+
 
 int debug_images_fronto()
 {
@@ -773,7 +804,7 @@ int main()
     //
        /************************ Points Refinement **********************************/
        vector<Mat> fronto_images;
-       int No_ITER = 15;
+       int No_ITER = 25;
        for(int i=0; i<No_ITER;i++){
            fronto_images.clear();
            imagePoints.clear();
