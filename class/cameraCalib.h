@@ -284,12 +284,13 @@ double Residuals(CvMat* Rt,CvMat* K,CvMat* ObjectPoints,CvMat* ImgPoints){
     cvmSet(temp,1,2,cvmGet(Rt,1,3));
     cvmSet(temp,2,2,cvmGet(Rt,2,3));
     cvMatMul(K,temp,Homography);
+    //usar homografia par proyectar 3d to 2d
     cvMatMul(Homography,ObjectPoints,estImgPoints);
     double dtd=0;
     for(i=0;i<REAL_NUM_CTRL_PTS;i++)
     {
-        dtd=dtd+pow((cvmGet(estImgPoints,0,i)/cvmGet(estImgPoints,2,i))-cvmGet(ImgPoints,0,i),2);
-        dtd=dtd+pow((cvmGet(estImgPoints,1,i)/cvmGet(estImgPoints,2,i))-cvmGet(ImgPoints,1,i),2);
+        dtd = dtd+pow((cvmGet(estImgPoints,0,i)/cvmGet(estImgPoints,2,i))-cvmGet(ImgPoints,0,i),2);
+        dtd = dtd+pow((cvmGet(estImgPoints,1,i)/cvmGet(estImgPoints,2,i))-cvmGet(ImgPoints,1,i),2);
     };
     return dtd;
 }

@@ -28,6 +28,7 @@
 #include "class/controlPointDetector.h"
 #include "class/utils.h"
 #include "class/iterativeCalibFunctions.h"
+#include "class/cameraCalib.h"
 
 //#include <cv.h>
 #include <iostream>
@@ -86,114 +87,6 @@ vector<Point2f> ellipses2Points(vector<P_Ellipse> ellipses){
         buffer[i] = ellipses[i].center();
     }
     return buffer;
-}
-
-void first_calibration_homework(string video_file){
-    //Camera calibration
-    float rms=-1;
-    // int NUM_FRAMES_FOR_CALIBRATION = 45;
-    int DELAY_TIME = 50;
-    vector<vector<Point2f>> imagePoints;
-    Mat cameraMatrix;
-    Mat distCoeffs = Mat::zeros(8, 1, CV_64F);
-    
-    //found pattern points
-    vector<P_Ellipse> control_points;
-    
-    VideoCapture cap;
-    cap.open(video_file);
-    if ( !cap.isOpened() ){
-        cout << "Cannot open the video file. \n";
-        return;
-    }
-    
-    
-    Mat frame;
-    cap.read(frame);
-    //total_frames = cap.get(CAP_PROP_FRAME_COUNT);
-    int w = frame.rows;
-    int h = frame.cols;
-    Size imageSize(h, w);
-    cout<<"imagesize: "<<imageSize<<endl;
-    
-    
-    namedWindow("resultado",CV_WINDOW_AUTOSIZE);
-    int total_frames=0;
-    int n_fails = 0;
-    float frame_time = 0;
-    int points_detected = 0;
-    
-    
-    while (1) {
-        Mat frame, rview;
-        cap>>frame;
-        if (frame.empty()) {
-            cout << "Cannot capture frame. \n";
-            break;
-        }
-        total_frames++;
-        frame_time = cap.get(CV_CAP_PROP_POS_MSEC)/1000;
-        
-        Mat frame_preprocessed;
-        auto t11 = std::chrono::high_resolution_clock::now();
-        preprocessing_frame(&frame, &frame_preprocessed);
-        //    imshow("Pre-procesada",img_preprocessed);
-        Mat img_ellipses = frame.clone();
-        
-        //if(total_frames == 3100)//44
-        points_detected = find_ellipses(&frame_preprocessed, &img_ellipses,control_points,frame_time,n_fails);
-        auto t12 = std::chrono::high_resolution_clock::now();
-        
-        duration += std::chrono::duration_cast<std::chrono::milliseconds>(t12 - t11).count();
-        
-        imshow("Normal", img_ellipses);
-        
-        if(rms==-1){
-            rview = img_ellipses.clone();
-            if(total_frames% DELAY_TIME == 0 && points_detected == REAL_NUM_CTRL_PTS){
-                vector<Point2f> buffer = ellipses2Points(control_points) ;
-                imagePoints.push_back(buffer);
-                for (int i=0; i<buffer.size(); i++) {
-                    cout<<"("<<buffer[i].x<<buffer[i].y<<") - ";
-                }
-                
-                if(imagePoints.size()==NUM_FRAMES_FOR_CALIBRATION){
-                    cout<<"=======================calibrar..."<<endl;
-                    rms= calibrate_camera(imageSize, cameraMatrix, distCoeffs, imagePoints);
-                    cout << "cameraMatrix " << cameraMatrix << endl;
-                    cout << "distCoeffs " << distCoeffs << endl;
-                    cout << "rms: " << rms << endl;
-                }
-            }
-        }
-        else
-        {
-            Mat map1, map2;
-            initUndistortRectifyMap(cameraMatrix, distCoeffs, Mat(),
-                                    getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, imageSize, 1, imageSize, 0),
-                                    imageSize, CV_16SC2, map1, map2);
-            
-            //for(int i = 0; i < (int)s.imageList.size(); i++ )
-            //{
-            if(img_ellipses.empty())
-                continue;
-            remap(img_ellipses, rview, map1, map2, INTER_LINEAR);
-            imshow("final", rview);
-            char c = (char)waitKey(1);
-        }
-        
-        //        cvtColor(frame_preprocessed,frame_preprocessed, COLOR_GRAY2RGB);
-        //imshow("other",frame_preprocessed);
-        //ShowManyImages("resultado", n_fails, total_frames, 4, frame, frame_preprocessed, img_circles, img_ellipses);
-        //        ShowManyImages("resultado", n_fails, total_frames, rms, cameraMatrix, 4, frame, frame_preprocessed, img_ellipses, rview);
-        
-        if(waitKey(1) == 27)
-        {
-            break;
-        }
-    }
-    cout<<"# fails: "<<n_fails<<" of: "<<total_frames<<endl;
-    cout<<"# frames: "<<total_frames<<" time: "<<duration<<endl;
 }
 
 /*
@@ -667,68 +560,438 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
 }
 /*******************************************************************************/
 
+void bulid_V(Mat& homography, CvMat* V, int i);
+double NormalizationMatrixImg(CvMat *Corners1,int N,CvMat *MT);
+void Homography(CvMat* datapoints1, CvMat* datapoints2, int N, CvMat* H);
+void SetV(CvMat*H, int i, CvMat *V);
 
+void my_calibrate_camera( vector<Mat> selected_frames, vector<Point3f> real_centers){
+    vector<P_Ellipse> control_points;
+    Mat output_img_control_points, img_prep_out;
+    
+    
+    
+    int n_images = (int)selected_frames.size();
+    
+    CvMat *homographies[n_images]; // I don't know how to dynamically assign CvMat
+    CvMat* V = cvCreateMat(2*n_images,6,CV_64FC1);
+    CvMat* b = cvCreateMat(6,1,CV_64FC1); // elements of the absolute conic
+    CvMat* ImgPoints = cvCreateMat(3,REAL_NUM_CTRL_PTS,CV_64FC1); // image coordinates
+    CvMat* ObjectPoints = cvCreateMat(3,REAL_NUM_CTRL_PTS,CV_64FC1); // object coordinates
+    CvMat* T = cvCreateMat(3,3,CV_64FC1); // Normalizing matrix for image coord.
+    CvMat* nObjectPoints = cvCreateMat(3,REAL_NUM_CTRL_PTS,CV_64FC1); // normalized object coordinates
+    CvMat* nImgPoints = cvCreateMat(3,REAL_NUM_CTRL_PTS,CV_64FC1); // normalized image coordinates
+    CvMat* Tp = cvCreateMat(3,3,CV_64FC1); // Normalizing matrix for object coord.
+    CvMat* Tinv = cvCreateMat(3,3,CV_64FC1); // inverse of T
+    CvMat* Tpinv = cvCreateMat(3,3,CV_64FC1); // inverse of Tp
+    CvMat* Hn = cvCreateMat(3,3,CV_64FC1); // estimated homography by normalized coord.
+    CvMat* Hntemp = cvCreateMat(3,3,CV_64FC1); // temporary matrix for calulation only
 
-int debug_images_fronto()
-{
-    
-    //string path_data = "/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/";
-    string frames_file = PATH_DATA_FRAMES;
-    // string video_file = PATH_DATA+"cam2/anillos.avi";
-    
-    //initial frame for get size of frames
-    Mat fronto_img, fronto_img_pre, fronto_img_ell;
-    
-    vector<cv::String> fn;
-    glob(PATH_DATA_FRAMES+"3-fronto/*.jpg", fn, false);
-    
-    vector<Mat> images;
-    size_t count = fn.size(); //total number  files in images folder
-    
-    size_t n = 30;
-    
-    if (count>0) {
-        int fails = 0;
-        int points_detected;
-        vector<P_Ellipse> out_control_points;
-        
-        for (size_t i=0; i<count; i++){
-            out_control_points.clear();
-            fronto_img = imread(fn[i]);
-            // cout<<"chanels : "<<fronto_img.channels()<<endl;
-            preprocessing_frame2(fronto_img,fronto_img_pre);
-            fronto_img_ell = fronto_img.clone();
-            points_detected = find_ellipses(&fronto_img_pre, &fronto_img_ell,out_control_points,0,fails);
-            cout<<"cp detected : "<<points_detected<<endl;
-            
-            imshow("fronto",fronto_img);
-            imshow("preprocess",fronto_img_pre);
-            imshow("ellipses",fronto_img_ell);
-            // ShowManyImages("resultado", 2, 3, 0, 0, 4, fronto_img, fronto_img_pre, fronto_img,fronto_img);
-            // cout<<"file: "<<fn[i]<<endl;
-            if(waitKey(1000) == 27)
-            {
-                break;
-            }
-            
-        }
-        return 1;
+    for(int j=0;j<REAL_NUM_CTRL_PTS;j++)
+    {
+        cvmSet(ObjectPoints,0,j,real_centers[j].x);
+        cvmSet(ObjectPoints,1,j,real_centers[j].y);
+        cvmSet(ObjectPoints,2,j,1);
+        // cout<<"real point: "<<real_centers[j].x<<", "<<real_centers[j].y<<endl;
+        // cout<<"object point: "<<cvmGet(ObjectPoints,0,j)<<", "<<cvmGet(ObjectPoints,1,j)<<endl;
     }
     
-    cout<<"Houston, we have a problem: Not frames for debug..."<<endl;
-    return 0;
-    // images.push_back(imread(fn[i]));
+    for (int i=0; i<selected_frames.size(); i++) {
+        int num_control_points = find_control_points(selected_frames[i],img_prep_out ,output_img_control_points,control_points);
+        
+       
+        
+        vector<Point2f> control_points_2d;
+        
+        control_points_2d.push_back(control_points[15].center());
+        control_points_2d.push_back(control_points[16].center());
+        control_points_2d.push_back(control_points[17].center());
+        control_points_2d.push_back(control_points[18].center());
+        control_points_2d.push_back(control_points[19].center());
+        
+        control_points_2d.push_back(control_points[10].center());
+        control_points_2d.push_back(control_points[11].center());
+        control_points_2d.push_back(control_points[12].center());
+        control_points_2d.push_back(control_points[13].center());
+        control_points_2d.push_back(control_points[14].center());
+        
+        control_points_2d.push_back(control_points[5].center());
+        control_points_2d.push_back(control_points[6].center());
+        control_points_2d.push_back(control_points[7].center());
+        control_points_2d.push_back(control_points[8].center());
+        control_points_2d.push_back(control_points[9].center());
+        
+        control_points_2d.push_back(control_points[0].center());
+        control_points_2d.push_back(control_points[1].center());
+        control_points_2d.push_back(control_points[2].center());
+        control_points_2d.push_back(control_points[3].center());
+        control_points_2d.push_back(control_points[4].center());
+
+        for(int j=0;j<REAL_NUM_CTRL_PTS;j++)
+        {
+            cvmSet(ImgPoints,0,j,control_points_2d[j].x);
+            cvmSet(ImgPoints,1,j,control_points_2d[j].y);
+            cvmSet(ImgPoints,2,j,1);
+        }
+        
+        // Estimate Homography
+        // 1. Normalize
+       
+        //calculate normalization matrix for Real points
+        NormalizationMatrixImg(ObjectPoints,REAL_NUM_CTRL_PTS,T);
+        cvMatMul(T,ObjectPoints,nObjectPoints);
+        cvInvert(T,Tinv);
+        
+        //calculate normalization matrix for ImagePoints
+        NormalizationMatrixImg(ImgPoints,REAL_NUM_CTRL_PTS,Tp);
+        cvMatMul(Tp,ImgPoints,nImgPoints);
+        cvInvert(Tp,Tpinv);
+        // 2. estimate Hn (normalize)
+        Homography(nObjectPoints,nImgPoints,REAL_NUM_CTRL_PTS,Hn);
+        //3. estimate H=inv(Tp)*Hn*T (Desnormalize)
+        cvMatMul(Tpinv,Hn,Hntemp);
+        homographies[i] = cvCreateMat(3,3,CV_64FC1);
+        cvMatMul(Hntemp,T,homographies[i]);
+        // Construct Vb=0
+        SetV(homographies[i], i, V);
+
+        // Mat homography = findHomography(control_points_2d,real_centers);
+        // homographies[i] = cvCreateMat(3,3,CV_64FC1);
+        
+        // cvmSet(homographies[i],0,0,homography.at<double>(0,0));
+        // cvmSet(homographies[i],1,0,homography.at<double>(0,1));
+        // cvmSet(homographies[i],2,0,homography.at<double>(0,2));
+        // cvmSet(homographies[i],0,1,homography.at<double>(1,0));
+        // cvmSet(homographies[i],1,1,homography.at<double>(1,1));
+        // cvmSet(homographies[i],2,1,homography.at<double>(1,2));
+        // cvmSet(homographies[i],0,2,homography.at<double>(2,0));
+        // cvmSet(homographies[i],1,2,homography.at<double>(2,1));
+        // cvmSet(homographies[i],2,2,homography.at<double>(2,2));
+        // cout<<"======================================="<<endl;
+        // cout<<homography<<" sss: "<<homography.size()<<endl;
+        // cout<<"-- "<<homography.at<float>(1,2)<<endl;
+        // bulid_V(homography,V,i);
+    }
+    //////////////////////////////////////////////
+    // estimate b (elements of the absolute conic)
+    CvMat* U = cvCreateMat(n_images*2,n_images*2,CV_64FC1);
+    CvMat* D = cvCreateMat(n_images*2,6,CV_64FC1);
+    CvMat* V2 = cvCreateMat(6,6,CV_64FC1);
+    CvMat* B = cvCreateMat(3,3,CV_64FC1);
+    cvSVD(V, D, U, V2, CV_SVD_V_T);
+    
+    cvmSet(b,0,0,cvmGet(V2,5,0));
+    cvmSet(b,1,0,cvmGet(V2,5,1));
+    cvmSet(b,2,0,cvmGet(V2,5,2));
+    cvmSet(b,3,0,cvmGet(V2,5,3));
+    cvmSet(b,4,0,cvmGet(V2,5,4));
+    cvmSet(b,5,0,cvmGet(V2,5,5));
+    // setup B
+    cvmSet(B,0,0,cvmGet(b,0,0));
+    cvmSet(B,0,1,cvmGet(b,1,0));
+    cvmSet(B,1,0,cvmGet(b,1,0));
+    cvmSet(B,1,1,cvmGet(b,2,0));
+    cvmSet(B,0,2,cvmGet(b,3,0));
+    cvmSet(B,2,0,cvmGet(b,3,0));
+    cvmSet(B,1,2,cvmGet(b,4,0));
+    cvmSet(B,2,1,cvmGet(b,4,0));
+    cvmSet(B,2,2,cvmGet(b,5,0));
+    // estimate intrinsic parameters
+    CvMat* K = cvCreateMat(3,3,CV_64FC1);
+    CvMat* Kinv = cvCreateMat(3,3,CV_64FC1);
+    double vo = (cvmGet(B,0,1)*cvmGet(B,0,2)-cvmGet(B,0,0)*cvmGet(B,1,2))/(cvmGet(B,0,0)*cvmGet(B,1,1)-
+                                                                           cvmGet(B,0,1)*cvmGet(B,0,1));
+    double lamda = cvmGet(B,2,2)-(cvmGet(B,0,2)*cvmGet(B,0,2)+vo*(cvmGet(B,0,1)*cvmGet(B,0,2)-
+                                                                  cvmGet(B,0,0)*cvmGet(B,1,2)))/cvmGet(B,0,0);
+    double alpha = sqrt(lamda/cvmGet(B,0,0));
+    double beta = sqrt(lamda*cvmGet(B,0,0)/(cvmGet(B,0,0)*cvmGet(B,1,1)-cvmGet(B,0,1)*cvmGet(B,0,1)));
+    double gamma = -cvmGet(B,0,1)*alpha*alpha*beta/lamda;
+    double uo = gamma*vo/beta-cvmGet(B,0,2)*alpha*alpha/lamda;
+    cvmSet(K,0,0,alpha);
+    cvmSet(K,0,1,gamma);
+    cvmSet(K,0,2,uo);
+    cvmSet(K,1,0,0);
+    cvmSet(K,1,1,beta);
+    cvmSet(K,1,2,vo);
+    cvmSet(K,2,0,0);
+    cvmSet(K,2,1,0);
+    cvmSet(K,2,2,1);
+    cvInvert(K,Kinv);
+    
+    // estimate extrinsic parameters
+    CvMat* h1 = cvCreateMat(3,1,CV_64FC1);
+    CvMat* h2 = cvCreateMat(3,1,CV_64FC1);
+    CvMat* h3 = cvCreateMat(3,1,CV_64FC1);
+    CvMat* r1 = cvCreateMat(3,1,CV_64FC1);
+    CvMat* r2 = cvCreateMat(3,1,CV_64FC1);
+    CvMat* r3 = cvCreateMat(3,1,CV_64FC1);
+    CvMat* t = cvCreateMat(3,1,CV_64FC1);
+    CvMat* Q = cvCreateMat(3,3,CV_64FC1);
+    CvMat* R = cvCreateMat(3,3,CV_64FC1);
+    CvMat* UU = cvCreateMat(3,3,CV_64FC1);
+    CvMat* DD = cvCreateMat(3,3,CV_64FC1);
+    CvMat* VV = cvCreateMat(3,3,CV_64FC1);
+    CvMat* Vt = cvCreateMat(3,3,CV_64FC1);
+    CvMat* Rt[n_images];
+    
+    float lamda1;
+    for(int i=0;i<n_images;i++)
+    {
+        
+        Rt[i] = cvCreateMat(3,4,CV_64FC1);
+        // setup column vector h1,h2,h3 from H[i]
+        cvmSet(h1,0,0,cvmGet(homographies[i],0,0));
+        cvmSet(h1,1,0,cvmGet(homographies[i],1,0));
+        cvmSet(h1,2,0,cvmGet(homographies[i],2,0));
+        cvmSet(h2,0,0,cvmGet(homographies[i],0,1));
+        cvmSet(h2,1,0,cvmGet(homographies[i],1,1));
+        cvmSet(h2,2,0,cvmGet(homographies[i],2,1));
+        cvmSet(h3,0,0,cvmGet(homographies[i],0,2));
+        cvmSet(h3,1,0,cvmGet(homographies[i],1,2));
+        cvmSet(h3,2,0,cvmGet(homographies[i],2,2));
+        // estimate the rotation matrix R and the translation vector t
+        cvMatMul(Kinv,h1,r1);
+        cvMatMul(Kinv,h2,r2);
+        cvMatMul(Kinv,h3,t);
+        lamda1=1/sqrt(pow(cvmGet(r1,0,0),2)+pow(cvmGet(r1,1,0),2)+pow(cvmGet(r1,2,0),2));
+        cvmSet(r1,0,0,cvmGet(r1,0,0)*lamda1);
+        cvmSet(r1,1,0,cvmGet(r1,1,0)*lamda1);
+        cvmSet(r1,2,0,cvmGet(r1,2,0)*lamda1);
+        cvmSet(r2,0,0,cvmGet(r2,0,0)*lamda1);
+        cvmSet(r2,1,0,cvmGet(r2,1,0)*lamda1);
+        cvmSet(r2,2,0,cvmGet(r2,2,0)*lamda1);
+        cvmSet(t,0,0,cvmGet(t,0,0)*lamda1);
+        cvmSet(t,1,0,cvmGet(t,1,0)*lamda1);
+        cvmSet(t,2,0,cvmGet(t,2,0)*lamda1);
+        cvCrossProduct(r1,r2,r3);
+        cvmSet(Q,0,0,cvmGet(r1,0,0));
+        cvmSet(Q,1,0,cvmGet(r1,1,0));
+        cvmSet(Q,2,0,cvmGet(r1,2,0));
+        cvmSet(Q,0,1,cvmGet(r2,0,0));
+        cvmSet(Q,1,1,cvmGet(r2,1,0));
+        cvmSet(Q,2,1,cvmGet(r2,2,0));
+        cvmSet(Q,0,2,cvmGet(r3,0,0));
+        cvmSet(Q,1,2,cvmGet(r3,1,0));
+        cvmSet(Q,2,2,cvmGet(r3,2,0));
+        // Refine Q become orthogonal matrix R
+        cvSVD(Q, DD, UU, VV, CV_SVD_V_T);
+        cvMatMul(UU,VV,R);
+        // Rt matrix
+        cvmSet(Rt[i],0,0,cvmGet(R,0,0));
+        cvmSet(Rt[i],1,0,cvmGet(R,1,0));
+        cvmSet(Rt[i],2,0,cvmGet(R,2,0));
+        cvmSet(Rt[i],0,1,cvmGet(R,0,1));
+        cvmSet(Rt[i],1,1,cvmGet(R,1,1));
+        cvmSet(Rt[i],2,1,cvmGet(R,2,1));
+        cvmSet(Rt[i],0,2,cvmGet(R,0,2));
+        cvmSet(Rt[i],1,2,cvmGet(R,1,2));
+        cvmSet(Rt[i],2,2,cvmGet(R,2,2));
+        cvmSet(Rt[i],0,3,cvmGet(t,0,0));
+        cvmSet(Rt[i],1,3,cvmGet(t,1,0));
+        cvmSet(Rt[i],2,3,cvmGet(t,2,0));
+    }
+    
+    // const char* reportfilename="/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/results/report.txt";
+    const char* reportfilename="results/report.txt";
+    FILE *report=fopen(reportfilename,"wt");
+    
+    
+    fprintf(report,"================= Camera Calibration Report ====================\n");
+    fprintf(report,"Number of images : %d\n",n_images);
+    // 2. Absolute Conic & intrinsic parameters
+    fprintf(report,"================= Estimated absolute Conic ====================\n");
+    for(int i=0;i<3;i++)
+    {
+        fprintf(report,"| %16.8f %16.8f %16.8f |\n",cvmGet(B,i,0),cvmGet(B,i,1),cvmGet(B,i,2));
+    }
+    
+    fprintf(report,"\n================= Estimated Instrinsic Parameters ====================\n");
+    fprintf(report,"vo=%f\n",vo);
+    fprintf(report,"lamda=%f\n",lamda);
+    fprintf(report,"alpha=%f\n",alpha);
+    fprintf(report,"beta=%f\n",beta);
+    fprintf(report,"gamma=%f\n",gamma);
+    fprintf(report,"uo=%f\n",uo);
+    fprintf(report,"| | | %16.8f %16.8f %16.8f |\n",cvmGet(K,0,0),cvmGet(K,0,1),cvmGet(K,0,2));
+    fprintf(report,"| K | = | %16.8f %16.8f %16.8f |\n",cvmGet(K,1,0),cvmGet(K,1,1),cvmGet(K,1,2));
+    fprintf(report,"| | | %16.8f %16.8f %16.8f |\n",cvmGet(K,2,0),cvmGet(K,2,1),cvmGet(K,2,2));
+    fprintf(report,"\n");
+    
+    double dtdrefined[n_images], dtd[n_images];
+    for(int i=0;i<n_images;i++)
+    {
+        // estimate residuals
+    
+        fprintf(report,"| | | %16.8f %16.8f %16.8f %16.8f |\n",cvmGet(Rt[i],0,0),cvmGet(Rt[i],0,1),cvmGet(Rt[i],0,2),cvmGet(Rt[i],0,3));
+        fprintf(report,"| R | t | = | %16.8f %16.8f %16.8f %16.8f |\n",cvmGet(Rt[i],1,0),cvmGet(Rt[i],1,1),cvmGet(Rt[i],1,2),cvmGet(Rt[i],1,3));
+        fprintf(report,"| | | %16.8f %16.8f %16.8f %16.8f |\n",cvmGet(Rt[i],2,0),cvmGet(Rt[i],2,1),cvmGet(Rt[i],2,2),cvmGet(Rt[i],2,3));
+        dtd[i]= Residuals(Rt[i],K,ObjectPoints,ImgPoints);
+        fprintf(report,"errors(dtd) = %f pixels\n",dtd[i]);
+        fprintf(report,"\n");
+        
+    }
+    if (1) // perform LM algoritm for each image seperately
+    {
+        /////////////////////////////////////////
+        // Refine Parameters (for each camera)
+        CvMat* estK = cvCreateMat(3,3,CV_64FC1);
+//        imgfn=fopen(imagefilenames,"rt");
+       
+        
+        for(int i=0;i<n_images;i++)
+        {
+            RefineCamera(Rt[i],K,estK,ObjectPoints,ImgPoints);
+        }
+        double improvementNumer=0;
+        double improvementDenom=0;
+        for(int i=0;i<n_images;i++){
+            improvementNumer=improvementNumer+dtdrefined[i];
+            improvementDenom=improvementDenom+dtd[i];
+            fprintf(report,"| | | %16.8f %16.8f %16.8f %16.8f |\n",cvmGet(Rt[i],0,0),cvmGet(Rt[i],0,1),cvmGet(Rt[i],0,2),cvmGet(Rt[i],0,3));
+            fprintf(report,"| R | t | = | %16.8f %16.8f %16.8f %16.8f |\n",cvmGet(Rt[i],1,0),cvmGet(Rt[i],1,1),cvmGet(Rt[i],1,2),cvmGet(Rt[i],1,3));
+            fprintf(report,"| | | %16.8f %16.8f %16.8f %16.8f |\n",cvmGet(Rt[i],2,0),cvmGet(Rt[i],2,1),cvmGet(Rt[i],2,2),cvmGet(Rt[i],2,3));
+            dtdrefined[i]=Residuals(Rt[i],estK,ObjectPoints,ImgPoints);
+            fprintf(report,"errors(dtd) = %f pixels\n",dtdrefined[i]);
+            fprintf(report,"\n");
+            
+        }
+        fprintf(report,"Improvement = ( sum of initial errors ) / (sum of refined errors)= %f.\n",improvementNumer/improvementDenom);
+        
+    }
+    
 }
-// int main(){
-//     save_rmss();
-//     return 0;
-// }
+//
+//<Function Homography>
+//- Estimate H , datapoint1 is in the domain and datapoint2 is in the range.
+//- N is the number of points
+void Homography(CvMat* datapoints1, CvMat* datapoints2, int N, CvMat* H){
+    int j;
+    CvMat* A = cvCreateMat(N*2,9,CV_64FC1);
+    CvMat* U = cvCreateMat(N*2,N*2,CV_64FC1);
+    CvMat* D = cvCreateMat(N*2,9,CV_64FC1);
+    CvMat* V = cvCreateMat(9,9,CV_64FC1);
+    for(j=0;j<N;j++)
+    {
+        cvmSet(A,2*j,0,0);
+        cvmSet(A,2*j,1,0);
+        cvmSet(A,2*j,2,0);
+        cvmSet(A,2*j,3,-cvmGet(datapoints1,0,j));
+        cvmSet(A,2*j,4,-cvmGet(datapoints1,1,j));
+        cvmSet(A,2*j,5,-cvmGet(datapoints1,2,j));
+        cvmSet(A,2*j,6,cvmGet(datapoints2,1,j)*cvmGet(datapoints1,0,j));
+        cvmSet(A,2*j,7,cvmGet(datapoints2,1,j)*cvmGet(datapoints1,1,j));
+        cvmSet(A,2*j,8,cvmGet(datapoints2,1,j)*cvmGet(datapoints1,2,j));
+        cvmSet(A,2*j+1,0,cvmGet(datapoints1,0,j));
+        cvmSet(A,2*j+1,1,cvmGet(datapoints1,1,j));
+        cvmSet(A,2*j+1,2,cvmGet(datapoints1,2,j));
+        cvmSet(A,2*j+1,3,0);
+        cvmSet(A,2*j+1,4,0);
+        cvmSet(A,2*j+1,5,0);
+        cvmSet(A,2*j+1,6,-cvmGet(datapoints2,0,j)*cvmGet(datapoints1,0,j));
+        cvmSet(A,2*j+1,7,-cvmGet(datapoints2,0,j)*cvmGet(datapoints1,1,j));
+        cvmSet(A,2*j+1,8,-cvmGet(datapoints2,0,j)*cvmGet(datapoints1,2,j));
+    }
+    // estimate H
+    cvSVD(A, D, U, V, CV_SVD_V_T);
+    cvmSet(H,0,0,cvmGet(V,8,0));
+    cvmSet(H,0,1,cvmGet(V,8,1));
+    cvmSet(H,0,2,cvmGet(V,8,2));
+    cvmSet(H,1,0,cvmGet(V,8,3));
+    cvmSet(H,1,1,cvmGet(V,8,4));
+    cvmSet(H,1,2,cvmGet(V,8,5));
+    cvmSet(H,2,0,cvmGet(V,8,6));
+    cvmSet(H,2,1,cvmGet(V,8,7));
+    cvmSet(H,2,2,cvmGet(V,8,8));
+}
+double NormalizationMatrixImg(CvMat *Corners1,int N,CvMat *MT){
+    int i;
+    double scale,Cx,Cy,AvgDist;
+    Cx=0;Cy=0;AvgDist=0;
+    for(i=0;i<N;i++)
+    {
+        Cx=Cx+cvmGet(Corners1,0,i);
+        Cy=Cy+cvmGet(Corners1,1,i);
+    }
+    Cx=Cx/N;
+    Cy=Cy/N;
+    for(i=0;i<N;i++)
+        AvgDist = AvgDist+sqrt(pow(cvmGet(Corners1,0,i)-Cx,2)+pow(cvmGet(Corners1,1,i)-Cy,2));
+    AvgDist=AvgDist/N;
+    scale=sqrt(2)/AvgDist;
+    
+    cvmSet(MT,0,0,scale);
+    cvmSet(MT,0,1,0);
+    cvmSet(MT,0,2,-scale*Cx);
+    cvmSet(MT,1,0,0);
+    cvmSet(MT,1,1,scale);
+    cvmSet(MT,1,2,-scale*Cy);
+    cvmSet(MT,2,0,0);
+    cvmSet(MT,2,1,0);
+    cvmSet(MT,2,2,1);
+    return scale;
+}
+//<Function SetV>
+//Set up V matrix to estimate the absolute conic B
+//H is the homography of the i-th image
+void SetV(CvMat*H, int i, CvMat *V){
+    double h11,h12,h13,h21,h22,h23,h31,h32,h33;
+    h11=cvmGet(H,0,0);
+    h12=cvmGet(H,1,0);
+    h13=cvmGet(H,2,0);
+    h21=cvmGet(H,0,1);
+    h22=cvmGet(H,1,1);
+    h23=cvmGet(H,2,1);
+    h31=cvmGet(H,0,2);
+    h32=cvmGet(H,1,2);
+    h33=cvmGet(H,2,2);
+    cvmSet(V,2*i,0,h11*h21);
+    cvmSet(V,2*i,1,h11*h22+h12*h21);
+    cvmSet(V,2*i,2,h12*h22);
+    cvmSet(V,2*i,3,h13*h21+h11*h23);
+    cvmSet(V,2*i,4,h13*h22+h12*h23);
+    cvmSet(V,2*i,5,h13*h23);
+    cvmSet(V,2*i+1,0,h11*h11-h21*h21);
+    cvmSet(V,2*i+1,1,h11*h12+h12*h11-h21*h22-h22*h21);
+    cvmSet(V,2*i+1,2,h12*h12-h22*h22);
+    cvmSet(V,2*i+1,3,h13*h11+h11*h13-h23*h21-h21*h23);
+    cvmSet(V,2*i+1,4,h13*h12+h12*h13-h23*h22-h22*h23);
+    cvmSet(V,2*i+1,5,h13*h13-h23*h23);
+}
+
+void bulid_V(Mat& homography, CvMat* V, int i){
+    float h11,h12,h13,h21,h22,h23,h31,h32,h33;
+    h11 = homography.at<double>(0,0);
+    h12 = homography.at<double>(0,1);
+    h13 = homography.at<double>(0,2);
+    h21 = homography.at<double>(1,0);
+    h22 = homography.at<double>(1,1);
+    h23 = homography.at<double>(1,2);
+    h31 = homography.at<double>(2,0);
+    h32 = homography.at<double>(2,1);
+    h33 = homography.at<double>(2,2);
+    
+    cvmSet(V,2*i,0,h11*h21);
+    cvmSet(V,2*i,1,h11*h22+h12*h21);
+    cvmSet(V,2*i,2,h12*h22);
+    cvmSet(V,2*i,3,h13*h21+h11*h23);
+    cvmSet(V,2*i,4,h13*h22+h12*h23);
+    cvmSet(V,2*i,5,h13*h23);
+    cvmSet(V,2*i+1,0,h11*h11-h21*h21);
+    cvmSet(V,2*i+1,1,h11*h12+h12*h11-h21*h22-h22*h21);
+    cvmSet(V,2*i+1,2,h12*h12-h22*h22);
+    cvmSet(V,2*i+1,3,h13*h11+h11*h13-h23*h21-h21*h23);
+    cvmSet(V,2*i+1,4,h13*h12+h12*h13-h23*h22-h22*h23);
+    cvmSet(V,2*i+1,5,h13*h13-h23*h23);
+    
+    
+}
+
 int main()
 {
     
     //string path_data = "/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/";
-    //string video_file = PATH_DATA+"cam1/anillos.mp4";
-    string video_file = "data/padron2.avi";
+    string video_file = PATH_DATA+"cam1/anillos.mp4";
+    // string video_file = "data/padron2.avi";
     //    string video_file = PATH_DATA+"cam2/anillos.avi";
     
     
@@ -757,164 +1020,167 @@ int main()
     select_frames(cap,selected_frames,frameSize,n_frames);
        //VideoCapture& cap, vector<Mat>& out_frames_selected, int w, int h,int n_quads_rows,int num_quads_cols
     
-       cout << "Creating ideal image ... "<< endl;
-       vector<Point3f> real_centers;
-       create_real_pattern(h,w, real_centers);
+    cout << "Creating ideal image ... "<< endl;
+    vector<Point3f> real_centers;
+    create_real_pattern(h,w, real_centers);
+
+    // cout << "Running my calibration ... "<< endl;
+    // my_calibrate_camera(selected_frames, real_centers);
        //    load_object_points(h,w, real_centers);
     
-       /*************************first calibration**********************************/
-       vector<vector<Point2f>> imagePoints;
-       Mat cameraMatrix, cameraMatrix_first;
-       Mat distCoeffs = Mat::zeros(8, 1, CV_64F);
-       Mat distCoeffs_first = Mat::zeros(8, 1, CV_64F);
-       vector<P_Ellipse> control_points;
-       int num_control_points=0;
-       double rms=-1;
-       double rms_first=-1;
-       Mat output_img_control_points, img_prep_out;
+    //    /*************************first calibration**********************************/
+    //    vector<vector<Point2f>> imagePoints;
+    //    Mat cameraMatrix, cameraMatrix_first;
+    //    Mat distCoeffs = Mat::zeros(8, 1, CV_64F);
+    //    Mat distCoeffs_first = Mat::zeros(8, 1, CV_64F);
+    //    vector<P_Ellipse> control_points;
+    //    int num_control_points=0;
+    //    double rms=-1;
+    //    double rms_first=-1;
+    //    Mat output_img_control_points, img_prep_out;
     
-       for (int i=0; i<selected_frames.size(); i++) {
-           control_points.clear();
-           num_control_points = find_control_points(selected_frames[i],img_prep_out ,output_img_control_points,control_points);
+    //    for (int i=0; i<selected_frames.size(); i++) {
+    //        control_points.clear();
+    //        num_control_points = find_control_points(selected_frames[i],img_prep_out ,output_img_control_points,control_points);
            
-            //    imshow("preproces img"+to_string(i), img_prep_out);
-            //    imshow("img"+to_string(i), output_img_control_points);
-            save_frame(PATH_DATA_FRAMES+"iteration0/preprocesed/","iter-"+to_string(i),img_prep_out);
-            save_frame(PATH_DATA_FRAMES+"iteration0/detected/","iter-"+to_string(i),output_img_control_points);
+    //         //    imshow("preproces img"+to_string(i), img_prep_out);
+    //         //    imshow("img"+to_string(i), output_img_control_points);
+    //         save_frame(PATH_DATA_FRAMES+"iteration0/preprocesed/","iter-"+to_string(i),img_prep_out);
+    //         save_frame(PATH_DATA_FRAMES+"iteration0/detected/","iter-"+to_string(i),output_img_control_points);
            
-           if(num_control_points == REAL_NUM_CTRL_PTS){
-               vector<Point2f> buffer = ellipses2Points(control_points) ;
-               imagePoints.push_back(buffer);
-           }
-           if(waitKey(30) == 27){
-                break;
-            }
-       }
+    //        if(num_control_points == REAL_NUM_CTRL_PTS){
+    //            vector<Point2f> buffer = ellipses2Points(control_points) ;
+    //            imagePoints.push_back(buffer);
+    //        }
+    //        if(waitKey(30) == 27){
+    //             break;
+    //         }
+    //    }
        
-       if(imagePoints.size()==selected_frames.size()){
-           cout << "First calibration... \n";
-           rms = calibrate_camera(frameSize, cameraMatrix, distCoeffs, imagePoints);
-           cout << "cameraMatrix " << cameraMatrix << endl;
-           cout << "distCoeffs " << distCoeffs << endl;
-           cout << "rms: " << rms << endl;
-           rms_first = rms;
-           rmss.push_back(rms);
-           cameraMatrix_first = cameraMatrix.clone();
-           distCoeffs_first = distCoeffs;
-       }
-    //
-       /************************ Points Refinement **********************************/
-       vector<Mat> fronto_images;
-       int No_ITER = 25;
-       for(int i=0; i<No_ITER;i++){
-           fronto_images.clear();
-           imagePoints.clear();
-           fronto_parallel_images(selected_frames,fronto_images,frameSize,real_centers, cameraMatrix, distCoeffs,imagePoints,i);
+    //    if(imagePoints.size()==selected_frames.size()){
+    //        cout << "First calibration... \n";
+    //        rms = calibrate_camera(frameSize, cameraMatrix, distCoeffs, imagePoints);
+    //        cout << "cameraMatrix " << cameraMatrix << endl;
+    //        cout << "distCoeffs " << distCoeffs << endl;
+    //        cout << "rms: " << rms << endl;
+    //        rms_first = rms;
+    //        rmss.push_back(rms);
+    //        cameraMatrix_first = cameraMatrix.clone();
+    //        distCoeffs_first = distCoeffs;
+    //    }
+    // //
+    //    /************************ Points Refinement **********************************/
+    //    vector<Mat> fronto_images;
+    //    int No_ITER = 25;
+    //    for(int i=0; i<No_ITER;i++){
+    //        fronto_images.clear();
+    //        imagePoints.clear();
+    //        fronto_parallel_images(selected_frames,fronto_images,frameSize,real_centers, cameraMatrix, distCoeffs,imagePoints,i);
     
-           /************************ Calibrate camera **********************************/
-           // cameraMatrix.release();
-           // distCoeffs.release();
-           cout << "saved frames: " << imagePoints.size() << endl;
-           if(imagePoints.size() > 0){
-               cout << "REFINEMENT ("<<i<<")"<<endl;
-               rms = calibrate_camera(frameSize, cameraMatrix, distCoeffs, imagePoints);
-               rmss.push_back(rms);
-               cout << "cameraMatrix " << cameraMatrix << endl;
-               cout << "distCoeffs " << distCoeffs << endl;
-               cout << "rms: " << rms << endl;
-           }
-       }
-       save_rmss(selected_frames.size(),rmss);
+    //        /************************ Calibrate camera **********************************/
+    //        // cameraMatrix.release();
+    //        // distCoeffs.release();
+    //        cout << "saved frames: " << imagePoints.size() << endl;
+    //        if(imagePoints.size() > 0){
+    //            cout << "REFINEMENT ("<<i<<")"<<endl;
+    //            rms = calibrate_camera(frameSize, cameraMatrix, distCoeffs, imagePoints);
+    //            rmss.push_back(rms);
+    //            cout << "cameraMatrix " << cameraMatrix << endl;
+    //            cout << "distCoeffs " << distCoeffs << endl;
+    //            cout << "rms: " << rms << endl;
+    //        }
+    //    }
+    //    save_rmss(selected_frames.size(),rmss);
     
-    //    debug_images_fronto();
+    // //    debug_images_fronto();
     
-     VideoCapture cap2;
-     cap2.open(video_file);
+    //  VideoCapture cap2;
+    //  cap2.open(video_file);
     
-     namedWindow("Image View", CV_WINDOW_AUTOSIZE);
+    //  namedWindow("Image View", CV_WINDOW_AUTOSIZE);
     
-     if ( !cap.isOpened() )
-         cout << "Cannot open the video file. \n";
-     while(1){
+    //  if ( !cap.isOpened() )
+    //      cout << "Cannot open the video file. \n";
+    //  while(1){
     
-         Mat frame2;
-         cap2>>frame2;
+    //      Mat frame2;
+    //      cap2>>frame2;
     
-         if(frame2.empty())
-             break;
+    //      if(frame2.empty())
+    //          break;
     
-     //First
-         Mat undistorted_image_first, map1_first, map2_first;
-         initUndistortRectifyMap(cameraMatrix_first, distCoeffs_first, Mat(),
-         getOptimalNewCameraMatrix(cameraMatrix_first, distCoeffs_first, frameSize, 1, frameSize, 0),
-         frameSize, CV_16SC2, map1_first, map2_first);
-         remap(frame2, undistorted_image_first, map1_first, map2_first, INTER_LINEAR);
+    //  //First
+    //      Mat undistorted_image_first, map1_first, map2_first;
+    //      initUndistortRectifyMap(cameraMatrix_first, distCoeffs_first, Mat(),
+    //      getOptimalNewCameraMatrix(cameraMatrix_first, distCoeffs_first, frameSize, 1, frameSize, 0),
+    //      frameSize, CV_16SC2, map1_first, map2_first);
+    //      remap(frame2, undistorted_image_first, map1_first, map2_first, INTER_LINEAR);
     
-      //Last
-         Mat undistorted_image, map1, map2, img_fronto_parallel;
-         initUndistortRectifyMap(cameraMatrix, distCoeffs, Mat(),
-         getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, frameSize, 1, frameSize, 0),
-         frameSize, CV_16SC2, map1, map2);
-         remap(frame2, undistorted_image, map1, map2, INTER_LINEAR);
+    //   //Last
+    //      Mat undistorted_image, map1, map2, img_fronto_parallel;
+    //      initUndistortRectifyMap(cameraMatrix, distCoeffs, Mat(),
+    //      getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, frameSize, 1, frameSize, 0),
+    //      frameSize, CV_16SC2, map1, map2);
+    //      remap(frame2, undistorted_image, map1, map2, INTER_LINEAR);
 
-         Mat img_prep_proc;
-         int n_ctrl_points_undistorted = find_control_points(undistorted_image, img_prep_proc,output_img_control_points,control_points,1,1,false);
+    //      Mat img_prep_proc;
+    //      int n_ctrl_points_undistorted = find_control_points(undistorted_image, img_prep_proc,output_img_control_points,control_points,1,1,false);
 
-         //int n_ctrl_points_undistorted = find_control_points(undistorted_image, output_img_control_points,control_points);
+    //      //int n_ctrl_points_undistorted = find_control_points(undistorted_image, output_img_control_points,control_points);
     
-         if(n_ctrl_points_undistorted == REAL_NUM_CTRL_PTS){
-             //cout << " ====================================================== "<< endl;
-             vector<Point2f> control_points2f = ellipses2Points(control_points);
-             //        plot_control_points(output_img_control_points,output_img_control_points,control_points_centers,yellow);
-             /**************** unproject*********************/
-             // cout << "Unproject image ... "<< endl;
-             // vector<Point2f> control_points_2d = ellipses2Points(control_points);
+    //      if(n_ctrl_points_undistorted == REAL_NUM_CTRL_PTS){
+    //          //cout << " ====================================================== "<< endl;
+    //          vector<Point2f> control_points2f = ellipses2Points(control_points);
+    //          //        plot_control_points(output_img_control_points,output_img_control_points,control_points_centers,yellow);
+    //          /**************** unproject*********************/
+    //          // cout << "Unproject image ... "<< endl;
+    //          // vector<Point2f> control_points_2d = ellipses2Points(control_points);
     
-             vector<Point2f> control_points_2d;
-             control_points_2d.push_back(control_points[15].center());
-             control_points_2d.push_back(control_points[16].center());
-             control_points_2d.push_back(control_points[17].center());
-             control_points_2d.push_back(control_points[18].center());
-             control_points_2d.push_back(control_points[19].center());
+    //          vector<Point2f> control_points_2d;
+    //          control_points_2d.push_back(control_points[15].center());
+    //          control_points_2d.push_back(control_points[16].center());
+    //          control_points_2d.push_back(control_points[17].center());
+    //          control_points_2d.push_back(control_points[18].center());
+    //          control_points_2d.push_back(control_points[19].center());
     
-             control_points_2d.push_back(control_points[10].center());
-             control_points_2d.push_back(control_points[11].center());
-             control_points_2d.push_back(control_points[12].center());
-             control_points_2d.push_back(control_points[13].center());
-             control_points_2d.push_back(control_points[14].center());
+    //          control_points_2d.push_back(control_points[10].center());
+    //          control_points_2d.push_back(control_points[11].center());
+    //          control_points_2d.push_back(control_points[12].center());
+    //          control_points_2d.push_back(control_points[13].center());
+    //          control_points_2d.push_back(control_points[14].center());
     
-             control_points_2d.push_back(control_points[5].center());
-             control_points_2d.push_back(control_points[6].center());
-             control_points_2d.push_back(control_points[7].center());
-             control_points_2d.push_back(control_points[8].center());
-             control_points_2d.push_back(control_points[9].center());
+    //          control_points_2d.push_back(control_points[5].center());
+    //          control_points_2d.push_back(control_points[6].center());
+    //          control_points_2d.push_back(control_points[7].center());
+    //          control_points_2d.push_back(control_points[8].center());
+    //          control_points_2d.push_back(control_points[9].center());
     
-             control_points_2d.push_back(control_points[0].center());
-             control_points_2d.push_back(control_points[1].center());
-             control_points_2d.push_back(control_points[2].center());
-             control_points_2d.push_back(control_points[3].center());
-             control_points_2d.push_back(control_points[4].center());
+    //          control_points_2d.push_back(control_points[0].center());
+    //          control_points_2d.push_back(control_points[1].center());
+    //          control_points_2d.push_back(control_points[2].center());
+    //          control_points_2d.push_back(control_points[3].center());
+    //          control_points_2d.push_back(control_points[4].center());
     
-             Mat homography = findHomography(control_points_2d,real_centers);
-             Mat inv_homography = findHomography(real_centers,control_points_2d);
+    //          Mat homography = findHomography(control_points_2d,real_centers);
+    //          Mat inv_homography = findHomography(real_centers,control_points_2d);
     
-             img_fronto_parallel = undistorted_image.clone();
-             warpPerspective(undistorted_image, img_fronto_parallel, homography, frame.size());
+    //          img_fronto_parallel = undistorted_image.clone();
+    //          warpPerspective(undistorted_image, img_fronto_parallel, homography, frame.size());
     
-         }
-         else{
-             cout << "NOT FOUND ... "<< endl;
-         }
+    //      }
+    //      else{
+    //          cout << "NOT FOUND ... "<< endl;
+    //      }
     
-         //imshow("Image View", rview);
-         //equalizeHist(img_fronto_parallel, img_fronto_parallel);
-         ShowManyImages("resultado", 2, 3, rms_first, rms, cameraMatrix, 4, frame2, img_fronto_parallel, undistorted_image_first,undistorted_image);
-             // waitKey(2);
-         if(waitKey(1) == 27)
-         {
-             break;
-         }
-     }
+    //      //imshow("Image View", rview);
+    //      //equalizeHist(img_fronto_parallel, img_fronto_parallel);
+    //      ShowManyImages("resultado", 2, 3, rms_first, rms, cameraMatrix, 4, frame2, img_fronto_parallel, undistorted_image_first,undistorted_image);
+    //          // waitKey(2);
+    //      if(waitKey(1) == 27)
+    //      {
+    //          break;
+    //      }
+    //  }
     
     return 0;
 }
