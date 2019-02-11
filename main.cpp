@@ -727,7 +727,8 @@ int main()
 {
     
     //string path_data = "/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/";
-    string video_file = PATH_DATA+"cam1/anillos.mp4";
+    //string video_file = PATH_DATA+"cam1/anillos.mp4";
+    string video_file = "data/padron2.avi";
     //    string video_file = PATH_DATA+"cam2/anillos.avi";
     
     
@@ -827,91 +828,93 @@ int main()
     
     //    debug_images_fronto();
     
-    // VideoCapture cap2;
-    // cap2.open(video_file);
+     VideoCapture cap2;
+     cap2.open(video_file);
     
-    // namedWindow("Image View", CV_WINDOW_AUTOSIZE);
+     namedWindow("Image View", CV_WINDOW_AUTOSIZE);
     
-    // if ( !cap.isOpened() )
-    //     cout << "Cannot open the video file. \n";
-    // while(1){
+     if ( !cap.isOpened() )
+         cout << "Cannot open the video file. \n";
+     while(1){
     
-    //     Mat frame2;
-    //     cap2>>frame2;
+         Mat frame2;
+         cap2>>frame2;
     
-    //     if(frame2.empty())
-    //         break;
+         if(frame2.empty())
+             break;
     
-    // //First
-    //     Mat undistorted_image_first, map1_first, map2_first;
-    //     initUndistortRectifyMap(cameraMatrix_first, distCoeffs_first, Mat(),
-    //     getOptimalNewCameraMatrix(cameraMatrix_first, distCoeffs_first, frameSize, 1, frameSize, 0),
-    //     frameSize, CV_16SC2, map1_first, map2_first);
-    //     remap(frame2, undistorted_image_first, map1_first, map2_first, INTER_LINEAR);
+     //First
+         Mat undistorted_image_first, map1_first, map2_first;
+         initUndistortRectifyMap(cameraMatrix_first, distCoeffs_first, Mat(),
+         getOptimalNewCameraMatrix(cameraMatrix_first, distCoeffs_first, frameSize, 1, frameSize, 0),
+         frameSize, CV_16SC2, map1_first, map2_first);
+         remap(frame2, undistorted_image_first, map1_first, map2_first, INTER_LINEAR);
     
-    //  //Last
-    //     Mat undistorted_image, map1, map2, img_fronto_parallel;
-    //     initUndistortRectifyMap(cameraMatrix, distCoeffs, Mat(),
-    //     getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, frameSize, 1, frameSize, 0),
-    //     frameSize, CV_16SC2, map1, map2);
-    //     remap(frame2, undistorted_image, map1, map2, INTER_LINEAR);
+      //Last
+         Mat undistorted_image, map1, map2, img_fronto_parallel;
+         initUndistortRectifyMap(cameraMatrix, distCoeffs, Mat(),
+         getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, frameSize, 1, frameSize, 0),
+         frameSize, CV_16SC2, map1, map2);
+         remap(frame2, undistorted_image, map1, map2, INTER_LINEAR);
+
+         Mat img_prep_proc;
+         int n_ctrl_points_undistorted = find_control_points(undistorted_image, img_prep_proc,output_img_control_points,control_points,1,1,false);
+
+         //int n_ctrl_points_undistorted = find_control_points(undistorted_image, output_img_control_points,control_points);
     
+         if(n_ctrl_points_undistorted == REAL_NUM_CTRL_PTS){
+             //cout << " ====================================================== "<< endl;
+             vector<Point2f> control_points2f = ellipses2Points(control_points);
+             //        plot_control_points(output_img_control_points,output_img_control_points,control_points_centers,yellow);
+             /**************** unproject*********************/
+             // cout << "Unproject image ... "<< endl;
+             // vector<Point2f> control_points_2d = ellipses2Points(control_points);
     
-    //     int n_ctrl_points_undistorted = find_control_points(undistorted_image, output_img_control_points,control_points);
+             vector<Point2f> control_points_2d;
+             control_points_2d.push_back(control_points[15].center());
+             control_points_2d.push_back(control_points[16].center());
+             control_points_2d.push_back(control_points[17].center());
+             control_points_2d.push_back(control_points[18].center());
+             control_points_2d.push_back(control_points[19].center());
     
-    //     if(n_ctrl_points_undistorted == REAL_NUM_CTRL_PTS){
-    //         //cout << " ====================================================== "<< endl;
-    //         vector<Point2f> control_points2f = ellipses2Points(control_points);
-    //         //        plot_control_points(output_img_control_points,output_img_control_points,control_points_centers,yellow);
-    //         /**************** unproject*********************/
-    //         // cout << "Unproject image ... "<< endl;
-    //         // vector<Point2f> control_points_2d = ellipses2Points(control_points);
+             control_points_2d.push_back(control_points[10].center());
+             control_points_2d.push_back(control_points[11].center());
+             control_points_2d.push_back(control_points[12].center());
+             control_points_2d.push_back(control_points[13].center());
+             control_points_2d.push_back(control_points[14].center());
     
-    //         vector<Point2f> control_points_2d;
-    //         control_points_2d.push_back(control_points[15].center());
-    //         control_points_2d.push_back(control_points[16].center());
-    //         control_points_2d.push_back(control_points[17].center());
-    //         control_points_2d.push_back(control_points[18].center());
-    //         control_points_2d.push_back(control_points[19].center());
+             control_points_2d.push_back(control_points[5].center());
+             control_points_2d.push_back(control_points[6].center());
+             control_points_2d.push_back(control_points[7].center());
+             control_points_2d.push_back(control_points[8].center());
+             control_points_2d.push_back(control_points[9].center());
     
-    //         control_points_2d.push_back(control_points[10].center());
-    //         control_points_2d.push_back(control_points[11].center());
-    //         control_points_2d.push_back(control_points[12].center());
-    //         control_points_2d.push_back(control_points[13].center());
-    //         control_points_2d.push_back(control_points[14].center());
+             control_points_2d.push_back(control_points[0].center());
+             control_points_2d.push_back(control_points[1].center());
+             control_points_2d.push_back(control_points[2].center());
+             control_points_2d.push_back(control_points[3].center());
+             control_points_2d.push_back(control_points[4].center());
     
-    //         control_points_2d.push_back(control_points[5].center());
-    //         control_points_2d.push_back(control_points[6].center());
-    //         control_points_2d.push_back(control_points[7].center());
-    //         control_points_2d.push_back(control_points[8].center());
-    //         control_points_2d.push_back(control_points[9].center());
+             Mat homography = findHomography(control_points_2d,real_centers);
+             Mat inv_homography = findHomography(real_centers,control_points_2d);
     
-    //         control_points_2d.push_back(control_points[0].center());
-    //         control_points_2d.push_back(control_points[1].center());
-    //         control_points_2d.push_back(control_points[2].center());
-    //         control_points_2d.push_back(control_points[3].center());
-    //         control_points_2d.push_back(control_points[4].center());
+             img_fronto_parallel = undistorted_image.clone();
+             warpPerspective(undistorted_image, img_fronto_parallel, homography, frame.size());
     
-    //         Mat homography = findHomography(control_points_2d,real_centers);
-    //         Mat inv_homography = findHomography(real_centers,control_points_2d);
+         }
+         else{
+             cout << "NOT FOUND ... "<< endl;
+         }
     
-    //         img_fronto_parallel = undistorted_image.clone();
-    //         warpPerspective(undistorted_image, img_fronto_parallel, homography, frame.size());
-    
-    //     }
-    //     else{
-    //         cout << "NOT FOUND ... "<< endl;
-    //     }
-    
-    //     //imshow("Image View", rview);
-    //     //equalizeHist(img_fronto_parallel, img_fronto_parallel);
-    //     ShowManyImages("resultado", 2, 3, rms_first, rms, cameraMatrix, 4, frame2, img_fronto_parallel, undistorted_image_first,undistorted_image);
-    //         // waitKey(2);
-    //     if(waitKey(1) == 27)
-    //     {
-    //         break;
-    //     }
-    // }
+         //imshow("Image View", rview);
+         //equalizeHist(img_fronto_parallel, img_fronto_parallel);
+         ShowManyImages("resultado", 2, 3, rms_first, rms, cameraMatrix, 4, frame2, img_fronto_parallel, undistorted_image_first,undistorted_image);
+             // waitKey(2);
+         if(waitKey(1) == 27)
+         {
+             break;
+         }
+     }
     
     return 0;
 }
