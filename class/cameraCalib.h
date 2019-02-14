@@ -132,16 +132,16 @@ void RefineCamera(CvMat *Rt, CvMat *K, CvMat *estK,CvMat *ObjectPoints, CvMat *I
     CvMat* Hessian_lm = cvCreateMat(11,11,CV_64FC1); // H_lm Matrix
     CvMat* Hessian_lminv = cvCreateMat(11,11,CV_64FC1); // H_lm Matrix
     
-    CvMat* U = cvCreateMat(11,11,CV_64FC1);
-    CvMat* D = cvCreateMat(11,11,CV_64FC1);
-    CvMat* V = cvCreateMat(11,11,CV_64FC1);
+    // CvMat* U = cvCreateMat(11,11,CV_64FC1);
+    // CvMat* D = cvCreateMat(11,11,CV_64FC1);
+    // CvMat* V = cvCreateMat(11,11,CV_64FC1);
     
     CvMat* P = cvCreateMat(11,1,CV_64FC1); // Parameters
     CvMat* Ptemp = cvCreateMat(11,1,CV_64FC1); // temporary P
     CvMat* dP = cvCreateMat(11,1,CV_64FC1); // delta P
     CvMat* R = cvCreateMat(3,3,CV_64FC1); // Rotation Matrix of the camera
     
-    CvMat* Rtemp = cvCreateMat(3,3,CV_64FC1);
+    // CvMat* Rtemp = cvCreateMat(3,3,CV_64FC1);
    
     CvMat* t = cvCreateMat(3,1,CV_64FC1); // Translation vector of the camera
     CvMat* W = cvCreateMat(3,1,CV_64FC1); // Rodrigues representation of R
@@ -190,11 +190,13 @@ void RefineCamera(CvMat *Rt, CvMat *K, CvMat *estK,CvMat *ObjectPoints, CvMat *I
     cvmSet(P,8,0,cvmGet(t,0,0)); //tx
     cvmSet(P,9,0,cvmGet(t,1,0)); //ty
     cvmSet(P,10,0,cvmGet(t,2,0)); //tz
+
     // Display Initial parameter values
     printf("Initial parameter values\n");
     for(i=0;i<11;i++) printf("P(%2d)=%f\n",i,cvmGet(P,i,0));
     // Initial geometric distance
     error=ErrorsGD(P,ObjectPoints,ImgPoints,REAL_NUM_CTRL_PTS,d,0);
+   
     // Iterate using LM method
     int updateJ=1;
     for(j=0;j<200;j++)
@@ -215,14 +217,19 @@ void RefineCamera(CvMat *Rt, CvMat *K, CvMat *estK,CvMat *ObjectPoints, CvMat *I
         cvMatMul(Hessian_lminv,JTd,dP);
         cvScaleAdd(dP,cvScalar(-1),P,Ptemp);
         delta=0;
-        for(i=0;i<11;i++) delta=delta+pow(cvmGet(dP,i,0),2);
+        for(i=0;i<11;i++){
+            delta = delta+pow(cvmGet(dP,i,0),2);
+        }
+        
         delta=sqrt(delta)/11;
         // check errors by Ptemp
         error2=ErrorsGD(Ptemp,ObjectPoints,ImgPoints,REAL_NUM_CTRL_PTS,d,0);
         if(error2<error) //decrease damping factor and update
         {
             lamda=lamda/10;
-            for(i=0;i<11;i++) cvmSet(P,i,0,cvmGet(Ptemp,i,0));
+            for(i=0;i<11;i++){
+                cvmSet(P,i,0,cvmGet(Ptemp,i,0));
+            }
             updateJ=1;
         }
         else // increase damping factor and try again
@@ -230,13 +237,18 @@ void RefineCamera(CvMat *Rt, CvMat *K, CvMat *estK,CvMat *ObjectPoints, CvMat *I
             updateJ=0;
             lamda=lamda*10;
         }
-        if(delta<threshold) break;
+        if(delta<threshold){
+            cout<<"Breaking........................."<<endl;
+            break;
+        } 
     }
     printf("Number of iteration = %d\n",j);
     printf("delta = %f\n",delta);
     // Display Refined parameter values
     printf("Refined parameter values\n");
-    for(i=0;i<11;i++) printf("P(%2d)=%f\n",i,cvmGet(P,i,0));
+    for(i=0;i<11;i++){
+        printf("P(%2d)=%f\n",i,cvmGet(P,i,0));
+    }
     // Finally estimated K
     cvmSet(estK,0,0,cvmGet(P,0,0));
     cvmSet(estK,1,0,cvmGet(K,1,0));

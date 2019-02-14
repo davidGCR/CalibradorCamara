@@ -24,10 +24,10 @@ int find_ellipses(Mat* img_preprocessing, Mat* img_out, vector<P_Ellipse>& contr
     findContours( (*img_preprocessing), contours, hierarchy, CV_RETR_TREE, CHAIN_APPROX_SIMPLE, Point(0, 0) );
     
     /// Draw contours
-   for( int i = 0; i< contours.size(); i++ )
-   {
-       drawContours( (*img_out), contours, i, yellow, 2, 8, hierarchy, 0, Point() );
-   }
+//    for( int i = 0; i< contours.size(); i++ )
+//    {
+//        drawContours( (*img_out), contours, i, yellow, 2, 8, hierarchy, 0, Point() );
+//    }
 //
     
     // cout<<"***** Preprocesing: find ellipses..."<<endl;
