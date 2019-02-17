@@ -4,9 +4,31 @@
 #include <vector>
 #include "constants.h"
 
+
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/highgui.hpp"
+#include "opencv2/imgproc.hpp"
+#include <iostream>
+using namespace cv;
 using namespace std;
 
+void save_refinements_parameters_add_row(ofstream& myfile,int iter, CvMat* K,CvMat* Rt, double rmss){
+//    for(int i = 0; i < P->rows; i++)
+//    {
+//        myfile <<cvmGet(P,i,0)<<",";
+//    }
+    myfile <<iter<<","<<cvmGet(K,0,0)<<","<<cvmGet(K,1,1)<<","<<cvmGet(K,0,2)<<","<<cvmGet(K,1,2)<<","<<cvmGet(K,0,1)<<","
+    <<cvmGet(Rt,0,0)<<","<<cvmGet(Rt,0,1)<<","<<cvmGet(Rt,0,2)<<","
+    <<cvmGet(Rt,1,0)<<","<<cvmGet(Rt,1,1)<<","<<cvmGet(Rt,1,2)<<","
+    <<cvmGet(Rt,2,0)<<","<<cvmGet(Rt,2,1)<<","<<cvmGet(Rt,2,2)<<","
+    <<cvmGet(Rt,0,3)<<","<<cvmGet(Rt,1,3)<<","<<cvmGet(Rt,2,3)<<","<<rmss<<"\n";
+}
 
+void set_headers(ofstream& myfile){
+
+    myfile << "it, fx, fy, cx, cy, sk, r00,r01,r02,r10,r11,r12,r20,r21,r22, t1, t2, t3, error\n";
+
+}
 
 void save_rmss(int no_frames_selected,vector<float> rmss){
     // vector<float> rmss(5);
@@ -32,4 +54,18 @@ void save_rmss(int no_frames_selected,vector<float> rmss){
     }
     
     myfile.close();
+}
+
+void print_cvMatrix(CvMat* mat, string m_name){
+    cout<<"================== "<<m_name<<" ================== \n["<<endl;
+    int  width = mat->cols;
+    int height = mat->rows;
+    cout<<"rows: "<<height<<", cols: "<<width<<endl;
+    for(int i=0;i<height;i++){
+        for (int j=0; j<width; j++) {
+            cout<<cvmGet(mat, i, j)<<", ";
+        }
+        cout<<endl;
+    }
+    cout<<"]\n =============================================="<<endl;
 }

@@ -29,6 +29,7 @@ void setJall(CvMat *P,CvMat *J, int Nfiles, CvMat *ObjectPoints){
     double u0, v0, au, av, sk;
     double tx, ty, tz, wx, wy, wz;
     double X, Y;
+    int x_y_total = 2*REAL_NUM_CTRL_PTS;
     // dummy variables
     double
     MapleGenVar1,MapleGenVar2,MapleGenVar3,MapleGenVar4,MapleGenVar5,MapleGenVar6,MapleGenVar7,MapleGenVar8,MapleGenVar9,
@@ -38,7 +39,7 @@ void setJall(CvMat *P,CvMat *J, int Nfiles, CvMat *ObjectPoints){
     u0=cvmGet(P,2,0);
     v0=cvmGet(P,3,0);
     sk=cvmGet(P,4,0);
-    for(i=0;i<160*Nfiles;i++) for(j=0;j<5+6*Nfiles;j++) cvmSet(J,i,j,0);
+    for(i=0;i<x_y_total*Nfiles;i++) for(j=0;j<5+6*Nfiles;j++) cvmSet(J,i,j,0);
     for(j=0;j<Nfiles;j++)
     {
         wx=cvmGet(P,5+6*j,0);
@@ -53,28 +54,28 @@ void setJall(CvMat *P,CvMat *J, int Nfiles, CvMat *ObjectPoints){
             Y=cvmGet(ObjectPoints,1,i);
             // Setup Jacobian matrix
             // intrinsic parameters
-            cvmSet(J,160*j+2*i , 0+j*6 , -((1.0+(1.0-cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*(-
+            cvmSet(J,x_y_total*j+2*i , 0+j*6 , -((1.0+(1.0-cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*(-
                                                                                                         wz*wz-wy*wy))*X+(-sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wz+(1.0-
                                                                                                                                                                                    cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*wy*wx)*Y+tx)/((-
                                                                                                                                                                                                                                                     sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wy+(1.0-
                                                                                                                                                                                                                                                                                                              cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*wz*wx)*X+(sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wx+(1.0-cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*wz*wy)*Y+tz));
-            cvmSet(J,160*j+2*i+1 , 0+j*6 , 0 );
-            cvmSet(J,160*j+2*i , 1+j*6 , 0 );
-            cvmSet(J,160*j+2*i+1 , 1+j*6 , -((sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wz+(1.0-
+            cvmSet(J,x_y_total*j+2*i+1 , 0+j*6 , 0 );
+            cvmSet(J,x_y_total*j+2*i , 1+j*6 , 0 );
+            cvmSet(J,x_y_total*j+2*i+1 , 1+j*6 , -((sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wz+(1.0-
                                                                                                        cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*wy*wx)*X+(1.0+(1.0-
                                                                                                                                                                         cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*(-wz*wz-wx*wx))*Y+ty)/((-
                                                                                                                                                                                                                                                   sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wy+(1.0-
                                                                                                                                                                                                                                                                                                            cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*wz*wx)*X+(sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wx+(1.0-cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*wz*wy)*Y+tz));
-            cvmSet(J,160*j+2*i , 2+j*6 , -1);
-            cvmSet(J,160*j+2*i+1 , 2+j*6 , 0);
-            cvmSet(J,160*j+2*i , 3+j*6 , 0);
-            cvmSet(J,160*j+2*i+1 , 3+j*6 , -1);
-            cvmSet(J,160*j+2*i , 4+j*6 , -((sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wz+(1.0-
+            cvmSet(J,x_y_total*j+2*i , 2+j*6 , -1);
+            cvmSet(J,x_y_total*j+2*i+1 , 2+j*6 , 0);
+            cvmSet(J,x_y_total*j+2*i , 3+j*6 , 0);
+            cvmSet(J,x_y_total*j+2*i+1 , 3+j*6 , -1);
+            cvmSet(J,x_y_total*j+2*i , 4+j*6 , -((sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wz+(1.0-
                                                                                                      cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*wy*wx)*X+(1.0+(1.0-
                                                                                                                                                                       cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*(-wz*wz-wx*wx))*Y+ty)/((-
                                                                                                                                                                                                                                                 sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wy+(1.0-
                                                                                                                                                                                                                                                                                                          cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*wz*wx)*X+(sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wx+(1.0-cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*wz*wy)*Y+tz));
-            cvmSet(J,160*j+2*i+1 , 4+j*6 , 0);
+            cvmSet(J,x_y_total*j+2*i+1 , 4+j*6 , 0);
             // extrinsic parameters
             MapleGenVar2 = -1.0;
             MapleGenVar7 = au*(sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(pow(wx*wx+wy*wy+wz*wz,3.0))*wx*(-
@@ -132,7 +133,7 @@ void setJall(CvMat *P,CvMat *J, int Nfiles, CvMat *ObjectPoints){
             MapleGenVar6 = MapleGenVar7+MapleGenVar8;
             MapleGenVar4 = MapleGenVar5*MapleGenVar6;
             MapleGenVar2 = MapleGenVar3*MapleGenVar4;
-            cvmSet(J,160*j+2*i , 5+j*6 , MapleGenVar1+MapleGenVar2);
+            cvmSet(J,x_y_total*j+2*i , 5+j*6 , MapleGenVar1+MapleGenVar2);
             MapleGenVar2 = -1.0;
             MapleGenVar7 = av*(cos(sqrt(wx*wx+wy*wy+wz*wz))/(wx*wx+wy*wy+wz*wz)*wx*wz-sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(pow(wx*wx+wy*wy+wz*wz,3.0))*wz*wx+sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(pow(wx*wx+wy*wy
                                                                                                                                                                                                +wz*wz,3.0))*wx*wx*wy-2.0*(1.0-cos(sqrt(wx*wx+wy*wy+wz*wz)))/pow(wx*wx+wy*wy+wz*wz,2.0)*wy*wx*wx+(1.0-
@@ -174,7 +175,7 @@ void setJall(CvMat *P,CvMat *J, int Nfiles, CvMat *ObjectPoints){
             MapleGenVar6 = MapleGenVar7+MapleGenVar8;
             MapleGenVar4 = MapleGenVar5*MapleGenVar6;
             MapleGenVar2 = MapleGenVar3*MapleGenVar4;
-            cvmSet(J,160*j+2*i+1 , 5+j*6 , MapleGenVar1+MapleGenVar2);
+            cvmSet(J,x_y_total*j+2*i+1 , 5+j*6 , MapleGenVar1+MapleGenVar2);
             
             MapleGenVar2 = -1.0;
             MapleGenVar7 = au*(sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(pow(wx*wx+wy*wy+wz*wz,3.0))*wy*(-
@@ -228,7 +229,7 @@ void setJall(CvMat *P,CvMat *J, int Nfiles, CvMat *ObjectPoints){
             MapleGenVar6 = MapleGenVar7+MapleGenVar8;
             MapleGenVar4 = MapleGenVar5*MapleGenVar6;
             MapleGenVar2 = MapleGenVar3*MapleGenVar4;
-            cvmSet(J,160*j+2*i , 5+j*6+1 , MapleGenVar1+MapleGenVar2);
+            cvmSet(J,x_y_total*j+2*i , 5+j*6+1 , MapleGenVar1+MapleGenVar2);
             
             MapleGenVar2 = -1.0;
             MapleGenVar7 = av*(cos(sqrt(wx*wx+wy*wy+wz*wz))/(wx*wx+wy*wy+wz*wz)*wy*wz-sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(pow(wx*wx+wy*wy+wz*wz,3.0))*wz*wy+sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(pow(wx*wx+wy*wy
@@ -266,7 +267,7 @@ void setJall(CvMat *P,CvMat *J, int Nfiles, CvMat *ObjectPoints){
             MapleGenVar6 = MapleGenVar7+MapleGenVar8;
             MapleGenVar4 = MapleGenVar5*MapleGenVar6;
             MapleGenVar2 = MapleGenVar3*MapleGenVar4;
-            cvmSet(J,160*j+2*i+1 , 5+j*6+1 , MapleGenVar1+MapleGenVar2);
+            cvmSet(J,x_y_total*j+2*i+1 , 5+j*6+1 , MapleGenVar1+MapleGenVar2);
             
             MapleGenVar2 = -1.0;
             MapleGenVar7 = au*(sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(pow(wx*wx+wy*wy+wz*wz,3.0))*wz*(-
@@ -324,7 +325,7 @@ void setJall(CvMat *P,CvMat *J, int Nfiles, CvMat *ObjectPoints){
             MapleGenVar6 = MapleGenVar7+MapleGenVar8;
             MapleGenVar4 = MapleGenVar5*MapleGenVar6;
             MapleGenVar2 = MapleGenVar3*MapleGenVar4;
-            cvmSet(J,160*j+2*i , 5+j*6+2 , MapleGenVar1+MapleGenVar2);
+            cvmSet(J,x_y_total*j+2*i , 5+j*6+2 , MapleGenVar1+MapleGenVar2);
             
             MapleGenVar2 = -1.0;
             MapleGenVar7 = av*(cos(sqrt(wx*wx+wy*wy+wz*wz))/(wx*wx+wy*wy+wz*wz)*wz*wz-sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(pow(wx*wx+wy*wy+wz*wz,3.0))*wz*wz+sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz
@@ -367,16 +368,16 @@ void setJall(CvMat *P,CvMat *J, int Nfiles, CvMat *ObjectPoints){
             MapleGenVar6 = MapleGenVar7+MapleGenVar8;
             MapleGenVar4 = MapleGenVar5*MapleGenVar6;
             MapleGenVar2 = MapleGenVar3*MapleGenVar4;
-            cvmSet(J,160*j+2*i+1 , 5+j*6+2 , MapleGenVar1+MapleGenVar2);
+            cvmSet(J,x_y_total*j+2*i+1 , 5+j*6+2 , MapleGenVar1+MapleGenVar2);
             
-            cvmSet(J,160*j+2*i , 5+j*6+3 , -au/((-
+            cvmSet(J,x_y_total*j+2*i , 5+j*6+3 , -au/((-
                                                  sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wy+(1.0-
                                                                                                           cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*wz*wx)*X+(sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wx+(1.0-cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*wz*wy)*Y+tz));
-            cvmSet(J,160*j+2*i+1 , 5+j*6+3 , 0);
-            cvmSet(J,160*j+2*i , 5+j*6+4 , -sk/((-
+            cvmSet(J,x_y_total*j+2*i+1 , 5+j*6+3 , 0);
+            cvmSet(J,x_y_total*j+2*i , 5+j*6+4 , -sk/((-
                                                  sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wy+(1.0-
                                                                                                           cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*wz*wx)*X+(sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wx+(1.0-cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*wz*wy)*Y+tz));
-            cvmSet(J,160*j+2*i+1 , 5+j*6+4 , -av/((-
+            cvmSet(J,x_y_total*j+2*i+1 , 5+j*6+4 , -av/((-
                                                    sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wy+(1.0-
                                                                                                             cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*wz*wx)*X+(sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wx+(1.0-cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*wz*wy)*Y+tz));
             
@@ -395,7 +396,7 @@ void setJall(CvMat *P,CvMat *J, int Nfiles, CvMat *ObjectPoints){
             MapleGenVar4 = 1/(pow((-sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wy+(1.0-
                                                                                              cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*wz*wx)*X+(sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wx+(1.0-cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*wz*wy)*Y+tz,2.0));
             MapleGenVar2 = MapleGenVar3*MapleGenVar4;
-            cvmSet(J,160*j+2*i , 5+j*6+5, MapleGenVar1+MapleGenVar2);
+            cvmSet(J,x_y_total*j+2*i , 5+j*6+5, MapleGenVar1+MapleGenVar2);
             MapleGenVar1 = -v0/((-sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wy+(1.0-
                                                                                            cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*wz*wx)*X+(sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wx+(1.0-cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*wz*wy)*Y+tz);
             MapleGenVar3 = (av*(sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wz+(1.0-
@@ -407,7 +408,7 @@ void setJall(CvMat *P,CvMat *J, int Nfiles, CvMat *ObjectPoints){
             MapleGenVar4 = 1/(pow((-sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wy+(1.0-
                                                                                              cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*wz*wx)*X+(sin(sqrt(wx*wx+wy*wy+wz*wz))/sqrt(wx*wx+wy*wy+wz*wz)*wx+(1.0-cos(sqrt(wx*wx+wy*wy+wz*wz)))/(wx*wx+wy*wy+wz*wz)*wz*wy)*Y+tz,2.0));
             MapleGenVar2 = MapleGenVar3*MapleGenVar4;
-            cvmSet(J,160*j+2*i+1 , 5+j*6+5, MapleGenVar1+MapleGenVar2);
+            cvmSet(J,x_y_total*j+2*i+1 , 5+j*6+5, MapleGenVar1+MapleGenVar2);
         }
     }
 }
