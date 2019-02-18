@@ -14,7 +14,7 @@ A method for camera calibration using rings pattern an OpenCV, based on:
 
 https://youtu.be/f9BiisoXgWY
 
-<iframe width="1228" height="691" src="https://www.youtube.com/embed/f9BiisoXgWY" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
 
 ### Students: 
 - Diego Javier Quispe 
