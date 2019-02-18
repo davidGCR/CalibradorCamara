@@ -19,7 +19,12 @@ g++ -ggdb `pkg-config --cflags opencv` -o `basename test1.cpp .cpp` test1.cpp `p
 # Pipeline General
 ![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/pipeline_calibrador.png?raw=true "Title")
 
-[[https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/pipeline_calibrador.png|alt=pipeline_calibrador]]
+## Resultados: 
+![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/Captura de pantalla 2019-02-18 a la(s) 03.25.24.png?raw=true "Title")
+
+
+      
+
 
 # Fuentes
 - [1] Zhengyou Zhang,“A Flexible New Technique for Camera Calibration”,2000.
