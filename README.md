@@ -1,4 +1,4 @@
-# CalibradorCamara
+# Camera Calibration with Rings Pattern and  OpenCV
 El presente proyecto es una implementacion de un calibrador de camara usando patrones circulares.
 
 # Ejecucion
