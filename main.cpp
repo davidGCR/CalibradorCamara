@@ -329,9 +329,13 @@ void plot_control_points(Mat& img_in, Mat& img_out, vector<Point2f>& control_poi
 }
 void create_real_pattern(int h, int w, vector<Point3f>& out_real_centers){
     
-    float margin_h = 70;//50
-    float margin_w = 90;
-    float distance_points = 110;
+    //float margin_h = 70;//50
+    //float margin_h = 30;
+    float margin_w = h/10;
+    float margin_h = w/10;
+    //float distance_points = 110;
+    float distance_points = w/PATTERN_NUM_ROWS-5;
+    cout << "distance_points" << distance_points << endl;
     out_real_centers.clear();
     out_real_centers.push_back(Point3f(  float(margin_w+distance_points*0) ,float( margin_h), 0));
     out_real_centers.push_back(Point3f(  float(margin_w+distance_points*1) ,float( margin_h), 0));
@@ -1019,7 +1023,7 @@ int main()
     //string path_data = "/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/";
 //    string video_file = PATH_DATA+"cam1/anillos.mp4";
     // string video_file = "data/padron2.avi";
-        string video_file = PATH_DATA+"cam2/anillos.mp4";
+        string video_file = PATH_DATA+"cam1/anillos.mp4";
     
     
     VideoCapture cap;
