@@ -17,7 +17,7 @@ g++ -ggdb `pkg-config --cflags opencv` -o `basename test1.cpp .cpp` test1.cpp `p
 ./test1
 
 # Pipeline General
-[[https://github.com/username/repository/blob/master/img/octocat.png|alt=octocat]]
+[[https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/pipeline_calibrador.png|alt=pipeline_calibrador]]
 
 # Fuentes
 - [1] Zhengyou Zhang,“A Flexible New Technique for Camera Calibration”,2000.
