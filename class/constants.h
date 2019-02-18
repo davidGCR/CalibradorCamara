@@ -35,8 +35,8 @@ const int NUM_FRAMES_FOR_CALIBRATION = 45;
 // const string PATH_DATA ="/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/";
 // const string PATH_RESULTS ="/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/results/";
 
-const string PATH_DATA =".../data/";
-const string PATH_RESULTS ="../results/";
+const string PATH_DATA ="data/";
+const string PATH_RESULTS ="results/";
 
 // const string PATH_DATA = "data/";
 const string PATH_DATA_FRAMES = PATH_DATA+"frames/";

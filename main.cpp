@@ -199,12 +199,16 @@ void select_frames(VideoCapture& cap, vector<Mat>& out_frames_selected, Size f_s
     // DEBUG_MODE = true;
     
     Mat img_quadrants,img_quadrants_track;
-    if(DEBUG_MODE){
-        cout<<"quadrants.size(): "<<quadrants.size()<<endl;
-        plot_quadrants(img_quadrants,f_size, quadrants);
-        img_quadrants_track = img_quadrants.clone();
-    }
-    // plot_quadrants(img_quadrants,f_size, quadrants);
+    plot_quadrants(img_quadrants,f_size, quadrants);
+    img_quadrants_track = img_quadrants.clone();
+
+
+    // if(DEBUG_MODE){
+    //     cout<<"quadrants.size(): "<<quadrants.size()<<endl;
+    //     plot_quadrants(img_quadrants,f_size, quadrants);
+    //     img_quadrants_track = img_quadrants.clone();
+    // }
+    plot_quadrants(img_quadrants,f_size, quadrants);
     // save_frame(PATH_DATA_FRAMES,"img_quadrants",img_quadrants);
     /*********************************************************************************************++*/
     
@@ -227,22 +231,27 @@ void select_frames(VideoCapture& cap, vector<Mat>& out_frames_selected, Size f_s
         
         //        cap.set(CAP_PROP_POS_FRAMES,start+i);
         Mat frame;
+       
         cap>>frame;
         if (frame.empty()) {
             cout << "Cannot capture frame. \n";
             break;
         }
+        Mat img_ellipses = frame.clone();
+        Mat selected_frame = Mat::zeros(frame.size(),CV_8UC3);
         if(i%delay_skip){
             Mat frame_preprocessed;
             preprocessing_frame(&frame, &frame_preprocessed);
-            Mat img_ellipses = frame.clone();
+            
             points_detected = find_ellipses(&frame_preprocessed, &img_ellipses,control_points,frame_time,n_fails);
             
-            if(DEBUG_MODE){
-                cv::circle(img_quadrants_track, pattern_center, 2, green);
-                imshow("real ", img_ellipses);
-                imshow("track ", img_quadrants_track);
-            }
+            cv::circle(img_quadrants_track, pattern_center, 2, green);
+
+            // if(DEBUG_MODE){
+            //     cv::circle(img_quadrants_track, pattern_center, 2, green);
+            //     imshow("real ", img_ellipses);
+            //     imshow("track ", img_quadrants_track);
+            // }
             //
             if(points_detected == REAL_NUM_CTRL_PTS){
                 pattern_center.x = (control_points[7].center().x + control_points[12].center().x)/2;
@@ -258,21 +267,32 @@ void select_frames(VideoCapture& cap, vector<Mat>& out_frames_selected, Size f_s
                             total_selected_frames++;
                             last_quadrant = k;
                             //save the selected frame
-                            save_frame(PATH_DATA_FRAMES+"iteration0/selected/","selected-"+to_string(total_selected_frames),frame);
-                            
-                            if(DEBUG_MODE){
-                                plot_quadrants(img_quadrants, f_size,quadrants);
-                                imshow("counts", img_quadrants);
-                                // waitKey(100);
-                            }
+                            // save_frame(PATH_DATA_FRAMES+"iteration0/selected/","selected-"+to_string(total_selected_frames),frame);
+                            selected_frame = frame.clone();
+                            plot_quadrants(img_quadrants, f_size,quadrants);
+
+                            // if(DEBUG_MODE){
+                            //     plot_quadrants(img_quadrants, f_size,quadrants);
+                            //     imshow("counts", img_quadrants);
+                            //     // waitKey(100);
+                            // }
                             
                             break;
                         }
                     }
                 }
+                
+            }
+            if(DEBUG_MODE){
+                ShowManyImages_Choosing("Choosing frames", 5, frame, img_ellipses, img_quadrants_track,img_quadrants,selected_frame);
+                if(waitKey(10) == 27)
+                {
+                        break;
+                }
             }
             
         }
+        
         
         // if(waitKey(10) == 27)
         // {
@@ -444,8 +464,8 @@ void avg_control_points(vector<Point2f>& control_points_undistort, vector<Point2
  * busca puntos de controlen un conjunto de frames, quita la distorcion y crea la imagen frontoparalela.
  * return: lista de frames frontoparalelos
  */
-void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto_images,Size frameSize,
-                            vector<Point3f> real_centers,Mat& cameraMatrix, Mat& distCoeffs,vector<vector<Point2f>>& imagePoints,int iteration,TYPE_REFINEMENT type,bool plot=false){
+void fronto_parallel_images(string video_file,vector<Mat>& selected_frames,vector<Mat>& out_fronto_images,Size frameSize,
+                            vector<Point3f> real_centers,Mat& cameraMatrix, double rms,Mat& distCoeffs,vector<vector<Point2f>>& imagePoints,int iteration,TYPE_REFINEMENT type,bool plot=false){
     
     // Mat cameraMatrix;
     // Mat distCoeffs = Mat::zeros(8, 1, CV_64F);
@@ -617,6 +637,12 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
             
             save_frame(PATH_DATA_FRAMES+"4-reprojected/","rep_iter-"+to_string(iteration)+"-frm-"+to_string(i),reprojected_image);
             
+            ShowManyImages_Refine(video_file,iteration,rms,cameraMatrix.at<double>(0,0),cameraMatrix.at<double>(1,1),cameraMatrix.at<double>(0,2),
+            cameraMatrix.at<double>(1,2),5,frame , output_img_control_points,img_fronto_parallel ,output_img_fronto_control_points,reprojected_image);
+            if(waitKey(50) == 27)
+            {
+                    break;
+            }
             // cout << "Found Control points in frame: size:  "<<imagePoints.size()<< endl;
         }
         else{
@@ -1310,7 +1336,8 @@ int main()
     //string path_data = "/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/";
 //    string video_file = PATH_DATA+"cam1/anillos.mp4";
     // string video_file = "data/padron2.avi";
-        string video_file = PATH_DATA+"cam2/anillos.mp4";
+        string video_file = PATH_DATA+"cam1-anillos.mp4";
+        // string video_file = PATH_DATA+"cam2-anillos.avi";
     
     
     VideoCapture cap;
@@ -1396,8 +1423,8 @@ int main()
         rmss.push_back(rms);
         cameraMatrix_first = cameraMatrix.clone();
         distCoeffs_first = distCoeffs;
-        my_rms = my_calibrate_camera(imagePoints,K, k_distorts, improv);
-        save_camera_parameters(myfile_mycameracalib, 0, K, my_rms, improv);
+        // my_rms = my_calibrate_camera(imagePoints,K, k_distorts, improv);
+        // save_camera_parameters(myfile_mycameracalib, 0, K, my_rms, improv);
         
     }
     //
@@ -1408,7 +1435,7 @@ int main()
     for(int i=0; i<No_ITER;i++){
         fronto_images.clear();
         imagePoints.clear();
-        fronto_parallel_images(selected_frames,fronto_images,frameSize,real_centers, cameraMatrix, distCoeffs,imagePoints,i, BARICENTER,false);
+        fronto_parallel_images(video_file,selected_frames,fronto_images,frameSize,real_centers, cameraMatrix, rms,distCoeffs,imagePoints,i, BARICENTER,false);
         cout<<"imagePoints.size(): "<<imagePoints.size()<<endl;
         /************************ Calibrate camera **********************************/
         // cameraMatrix.release();
@@ -1422,15 +1449,12 @@ int main()
             cout << "distCoeffs " << distCoeffs << endl;
             cout << "rms: " << rms << endl;
             save_camera_parameters(myfile_resulr_ref, i, cameraMatrix, rms);
-            my_rms = my_calibrate_camera(imagePoints,K, k_distorts, improv);
-            save_camera_parameters(myfile_mycameracalib, i, K, my_rms, improv);
+            // my_rms = my_calibrate_camera(imagePoints,K, k_distorts, improv);
+            // save_camera_parameters(myfile_mycameracalib, i, K, my_rms, improv);
         }
     }
     myfile_resulr_ref.close();
     myfile_mycameracalib.close();
-//    save_rmss(selected_frames.size(),rmss);
-//
-    // //    debug_images_fronto();
     
     //  VideoCapture cap2;
     //  cap2.open(video_file);
