@@ -42,8 +42,13 @@ g++ -ggdb `pkg-config --cflags opencv` -o `basename test1.cpp .cpp` test1.cpp `p
 ![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/refinement-plot-c1.png?raw=true "Title")
 ![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/refinement-plot-c2.png?raw=true "Title")
 
+## Algoritmo de Zhang (Implementacion)
+![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/zhang-c1.png?raw=true "Title")
+![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/zhang-c2.png?raw=true "Title")
 
 # Fuentes
 - [1] Zhengyou Zhang,“A Flexible New Technique for Camera Calibration”,2000.
 - [2] Ankur Datta, “Accurate Camera Calibration using Iterative Refinement of Control Points”, 2009.
 - [3] Prakash, Camera Calibration using Adaptive Segmentation and Ellipse Fitting for Localizing Control Points”, 2012.
+- [4] Open Source Computer Vision,“Camera calibration With OpenCV“.
+- [5] Burger, “Zhang’s Camera Calibration Algorithm:In-Depth Tutorial and Implementation“.
