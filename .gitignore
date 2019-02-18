@@ -6,7 +6,5 @@
 *.pkl
 */Tarea3-Redes-Neuronales
 *.ipynb_checkpoints/
-*.avi
-*.mp4
 *.jpg
 *.png
