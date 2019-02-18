@@ -21,7 +21,7 @@ Requirements:
 To run the code:
 
 - Clone o download the source code.
-- AOpen a terminal in the repository folder.
+- Open a terminal in the repository folder.
 - Compile with the command:
 g++ -ggdb main.cpp class/cameraCalib.h class/utils.h class/iterativeCalibFunctions.h class/ellipse.h class/Line.h class/constants.h class/quadrant.h class/controlPointDetector.h class/display.h class/preprocessing.h -o main -std=c++11 `pkg-config --cflags --libs opencv`
 
@@ -36,7 +36,7 @@ or write "make"
 ![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/GeneralPicture.png?raw=true "Title")
 
 # 3. Results
-## 3.1 re-processing, detection and tracking
+## 3.1 Pre-processing, detection and tracking
 ![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/pre-detect-track.png?raw=true "Title")
 
 ## 3.2 Distortion correction
@@ -45,7 +45,7 @@ or write "make"
 ## 3.3 Time and Accuracy test
 ![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/time-acc.png?raw=true "Title")
 
-## 3.4 Compare with other calibrations of OpenCV
+## 3.4 Compare with other  OpenCV calibrations
 ![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/c1-c2-accuracy.png?raw=true "Title")
 
 ## 3.5 Control points refinements
