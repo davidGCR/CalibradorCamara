@@ -25,9 +25,21 @@ void save_refinements_parameters_add_row(ofstream& myfile,int iter, CvMat* K,CvM
 }
 
 void set_headers(ofstream& myfile){
-
     myfile << "it, fx, fy, cx, cy, sk, r00,r01,r02,r10,r11,r12,r20,r21,r22, t1, t2, t3, error\n";
+}
+void set_headers_refinement(ofstream& myfile){
+    myfile << "it, fx, fy, cx, cy, RMS\n";
+}
+void set_headers_refinement(ofstream& myfile, string more){
+    myfile << "it, fx, fy, cx, cy, RMS,"<<more<<"\n";
+}
 
+void save_camera_parameters(ofstream& myfile, int it, Mat cameraMatrix, double rms){
+    myfile <<it<<","<<cameraMatrix.at<double>(0,0)<<","<<cameraMatrix.at<double>(1,1)<<","<<cameraMatrix.at<double>(0,2)<<","<<cameraMatrix.at<double>(1,2)<<","<<rms<<"\n";
+}
+
+void save_camera_parameters(ofstream& myfile, int it, CvMat* K, double rms, double improv){
+    myfile <<it<<","<<cvmGet(K,0,0)<<","<<cvmGet(K,1,1)<<","<<cvmGet(K,0,2)<<","<<cvmGet(K,1,2)<<","<<rms<<","<<improv<<"\n";
 }
 
 void save_rmss(int no_frames_selected,vector<float> rmss){

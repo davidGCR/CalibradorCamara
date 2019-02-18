@@ -309,7 +309,6 @@ void RefineCameraAll(CvMat *Rt[], CvMat *K, CvMat *estK,CvMat *ObjectPoints, CvM
     
     double threshold=1e-6;
     double error2,delta=100;
-    int Iteration=0;
     double damping=0.01; // create initial damping factor
     int i,j,k;
     // setup identity matrix

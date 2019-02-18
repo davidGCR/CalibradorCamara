@@ -327,6 +327,43 @@ void plot_control_points(Mat& img_in, Mat& img_out, vector<Point2f>& control_poi
         circle(img_out, control_points[i], 5, color, 0.5);
     }
 }
+//void create_real_pattern(int h, int w, vector<Point3f>& out_real_centers){
+//
+//    float margin_h = 70;//50
+//    float margin_w = 90;
+//    float distance_points = 110;
+//    out_real_centers.clear();
+//    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*0) ,float( margin_h), 0));
+//    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*1) ,float( margin_h), 0));
+//    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*2) ,float( margin_h), 0));
+//    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*3) ,float( margin_h), 0));
+//    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*4) ,float( margin_h), 0));
+//
+//    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*0) ,float( margin_h+distance_points*1), 0));
+//    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*1) ,float( margin_h+distance_points*1), 0));
+//    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*2) ,float( margin_h+distance_points*1), 0));
+//    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*3) ,float( margin_h+distance_points*1), 0));
+//    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*4) ,float( margin_h+distance_points*1), 0));
+//
+//    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*0) ,float( margin_h+distance_points*2), 0));
+//    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*1) ,float( margin_h+distance_points*2), 0));
+//    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*2) ,float( margin_h+distance_points*2), 0));
+//    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*3) ,float( margin_h+distance_points*2), 0));
+//    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*4) ,float( margin_h+distance_points*2), 0));
+//
+//    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*0) ,float( margin_h+distance_points*3), 0));
+//    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*1) ,float( margin_h+distance_points*3), 0));
+//    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*2) ,float( margin_h+distance_points*3), 0));
+//    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*3) ,float( margin_h+distance_points*3), 0));
+//    out_real_centers.push_back(Point3f(  float(margin_w+distance_points*4) ,float( margin_h+distance_points*3), 0));
+//
+//
+//    Mat real_points_img = Mat::zeros(Size(h,w), CV_8UC3);
+//    for(int i=0;i<out_real_centers.size();i++){
+//        circle(real_points_img, Point2f(out_real_centers[i].x,out_real_centers[i].y), 2, rose, 2);
+//    }
+//    save_frame(PATH_DATA_FRAMES,"ideal image", real_points_img);
+//}
 void create_real_pattern(int h, int w, vector<Point3f>& out_real_centers){
     
     //float margin_h = 70;//50
@@ -335,7 +372,7 @@ void create_real_pattern(int h, int w, vector<Point3f>& out_real_centers){
     float margin_h = w/10;
     //float distance_points = 110;
     float distance_points = w/PATTERN_NUM_ROWS-5;
-    cout << "distance_points" << distance_points << endl;
+//    cout << "distance_points" << distance_points << endl;
     out_real_centers.clear();
     out_real_centers.push_back(Point3f(  float(margin_w+distance_points*0) ,float( margin_h), 0));
     out_real_centers.push_back(Point3f(  float(margin_w+distance_points*1) ,float( margin_h), 0));
@@ -408,7 +445,7 @@ void avg_control_points(vector<Point2f>& control_points_undistort, vector<Point2
  * return: lista de frames frontoparalelos
  */
 void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto_images,Size frameSize,
-                            vector<Point3f> real_centers,Mat& cameraMatrix, Mat& distCoeffs,vector<vector<Point2f>>& imagePoints,int iteration){
+                            vector<Point3f> real_centers,Mat& cameraMatrix, Mat& distCoeffs,vector<vector<Point2f>>& imagePoints,int iteration,TYPE_REFINEMENT type,bool plot=false){
     
     // Mat cameraMatrix;
     // Mat distCoeffs = Mat::zeros(8, 1, CV_64F);
@@ -459,8 +496,11 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
         if(n_ctrl_points_undistorted != REAL_NUM_CTRL_PTS){
             continue;
         }
-        imshow("undistort image-"+to_string(i), output_img_control_points);
-        waitKey(700);
+        if(plot){
+            imshow("undistort image-"+to_string(i), output_img_control_points);
+            waitKey(700);
+        }
+        
         vector<Point2f> control_points_undistort2f = ellipses2Points(control_points_undistort);
         //        plot_control_points(output_img_control_points,output_img_control_points,control_points_centers,yellow);
         /**************** unproject*********************/
@@ -514,9 +554,11 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
         
         num_control_points_fronto = find_control_points(img_fronto_parallel,img_prep_proc, output_img_fronto_control_points,fronto_control_points,iteration,i,false);
         
-        imshow("img_fronto_parallel-"+to_string(i), output_img_fronto_control_points);
-        waitKey(700);
-        
+        if (plot) {
+            imshow("img_fronto_parallel-"+to_string(i), output_img_fronto_control_points);
+            waitKey(700);
+        }
+    
         /**************** Reproject control points to camera coordinates *********************/
         
         if(num_control_points_fronto==REAL_NUM_CTRL_PTS){
@@ -547,23 +589,31 @@ void fronto_parallel_images(vector<Mat>& selected_frames,vector<Mat>& out_fronto
             //REPROJECT (intersections): Distort reprojected intersections points
             vector<Point2f> reprojected_points_intersections_distort(REAL_NUM_CTRL_PTS);
             distortPoints(reprojected_points_intersections, reprojected_points_intersections_distort, cameraMatrix, distCoeffs);
-            
-            // ////Refinement: Normal
-            // imagePoints.push_back(reprojected_points_distort);
-            
-            // // Refinement: Average
-            avg_control_points(original_control_points2f,reprojected_points_distort);
-            imagePoints.push_back(reprojected_points_distort);
-            
-            // //Refinement Baricenter
-            // vector<Point2f> baricenters(REAL_NUM_CTRL_PTS);
-            // baricenter(original_control_points2f,reprojected_points_distort,reprojected_points_intersections_distort,baricenters);
-            // imagePoints.push_back(baricenters);
-            
             reprojected_image = frame.clone();
-            // plot_control_points(undistorted_image,reprojected_image,original_control_points2f,green);
-            plot_control_points(reprojected_image,reprojected_image,reprojected_points_distort,red);
-            // plot_control_points(reprojected_image,reprojected_image,reprojected_points_intersections_distort,white);
+            switch (type) {
+                case NORMAL:
+                    imagePoints.push_back(reprojected_points_distort);
+                    plot_control_points(undistorted_image,reprojected_image,original_control_points2f,green);
+                    break;
+                    
+                case AVERAGE:
+                    avg_control_points(original_control_points2f,reprojected_points_distort);
+                    imagePoints.push_back(reprojected_points_distort);
+                    plot_control_points(undistorted_image,reprojected_image,original_control_points2f,green);
+                    plot_control_points(reprojected_image,reprojected_image,reprojected_points_distort,red);
+                    break;
+                    
+                case BARICENTER:
+                    vector<Point2f> baricenters(REAL_NUM_CTRL_PTS);
+                baricenter(original_control_points2f,reprojected_points_distort,reprojected_points_intersections_distort,baricenters);
+                    
+                    imagePoints.push_back(baricenters);
+                    plot_control_points(undistorted_image,reprojected_image,original_control_points2f,green);
+                    plot_control_points(reprojected_image,reprojected_image,reprojected_points_distort,red);
+                    plot_control_points(reprojected_image,reprojected_image,reprojected_points_intersections_distort,
+                                    white);
+                    break;
+            }
             
             save_frame(PATH_DATA_FRAMES+"4-reprojected/","rep_iter-"+to_string(iteration)+"-frm-"+to_string(i),reprojected_image);
             
@@ -587,14 +637,248 @@ void bulid_V(Mat& homography, CvMat* V, int i);
 double NormalizationMatrixImg(CvMat *Corners1,int N,CvMat *MT);
 void Homography(CvMat* datapoints1, CvMat* datapoints2, int N, CvMat* H);
 void SetV(CvMat*H, int i, CvMat *V);
-void calculateRadialDistortion(CvMat* Rt[],CvMat* K,vector<vector<Point2f>> control_poits_images,vector<Point3f> real_centers,int N, int M,
+void calculateRadialDistortion(CvMat* Rt[],CvMat* K,vector<vector<Point2f>> control_poits_images,CvMat* real_centers,int N, int M,
                                CvMat* K_distorts);
-
-void my_calibrate_camera( vector<Mat> selected_frames, vector<Point3f> real_centers){
+double my_calibrate_camera( vector<vector<Point2f>> image_points,CvMat* K, CvMat* distortions, double& improv){
+    
     vector<P_Ellipse> control_points;
     Mat output_img_control_points, img_prep_out;
     
+    int n_images = (int)image_points.size();
+    double error0=0, error=0;
     
+    CvMat *homographies[n_images]; // I don't know how to dynamically assign CvMat
+    CvMat* V = cvCreateMat(2*n_images,6,CV_64FC1);
+    CvMat* b = cvCreateMat(6,1,CV_64FC1); // elements of the absolute conic
+    CvMat* ImgPoints = cvCreateMat(3,REAL_NUM_CTRL_PTS,CV_64FC1); // image coordinates
+    CvMat* ObjectPoints = cvCreateMat(3,REAL_NUM_CTRL_PTS,CV_64FC1); // object coordinates
+    CvMat* T = cvCreateMat(3,3,CV_64FC1); // Normalizing matrix for image coord.
+    CvMat* nObjectPoints = cvCreateMat(3,REAL_NUM_CTRL_PTS,CV_64FC1); // normalized object coordinates
+    CvMat* nImgPoints = cvCreateMat(3,REAL_NUM_CTRL_PTS,CV_64FC1); // normalized image coordinates
+    CvMat* Tp = cvCreateMat(3,3,CV_64FC1); // Normalizing matrix for object coord.
+    CvMat* Tinv = cvCreateMat(3,3,CV_64FC1); // inverse of T
+    CvMat* Tpinv = cvCreateMat(3,3,CV_64FC1); // inverse of Tp
+    CvMat* Hn = cvCreateMat(3,3,CV_64FC1); // estimated homography by normalized coord.
+    CvMat* Hntemp = cvCreateMat(3,3,CV_64FC1); // temporary matrix for calulation only
+    
+    vector<Point3f> objpoints;
+    get_ObjectPoints(objpoints);
+    for(int j=0;j<REAL_NUM_CTRL_PTS;j++)
+    {
+        cvmSet(ObjectPoints,0,j,objpoints[j].x);
+        cvmSet(ObjectPoints,1,j,objpoints[j].y);
+        cvmSet(ObjectPoints,2,j,1);
+    }
+    
+    for (int i=0; i<image_points.size(); i++) {
+        
+        for(int j=0;j<REAL_NUM_CTRL_PTS;j++)
+        {
+            cvmSet(ImgPoints,0,j,image_points[i][j].x);
+            cvmSet(ImgPoints,1,j,image_points[i][j].y);
+            cvmSet(ImgPoints,2,j,1);
+        }
+        // Estimate Homography
+        // 1. Normalize
+        
+        //calculate normalization matrix for Real points
+        NormalizationMatrixImg(ObjectPoints,REAL_NUM_CTRL_PTS,T);
+        cvMatMul(T,ObjectPoints,nObjectPoints);
+        cvInvert(T,Tinv);
+        
+        //calculate normalization matrix for ImagePoints
+        NormalizationMatrixImg(ImgPoints,REAL_NUM_CTRL_PTS,Tp);
+        cvMatMul(Tp,ImgPoints,nImgPoints);
+        cvInvert(Tp,Tpinv);
+        // 2. estimate Hn (normalize)
+        Homography(nObjectPoints,nImgPoints,REAL_NUM_CTRL_PTS,Hn);
+        //3. estimate H=inv(Tp)*Hn*T (Desnormalize)
+        cvMatMul(Tpinv,Hn,Hntemp);
+        homographies[i] = cvCreateMat(3,3,CV_64FC1);
+        cvMatMul(Hntemp,T,homographies[i]);
+        // Construct Vb=0
+        SetV(homographies[i], i, V);
+        
+    }
+    //////////////////////////////////////////////
+    // estimate b (elements of the absolute conic)
+    CvMat* U = cvCreateMat(n_images*2,n_images*2,CV_64FC1);
+    CvMat* D = cvCreateMat(n_images*2,6,CV_64FC1);
+    CvMat* V2 = cvCreateMat(6,6,CV_64FC1);
+    CvMat* B = cvCreateMat(3,3,CV_64FC1);
+    cvSVD(V, D, U, V2, CV_SVD_V_T);
+    
+    cvmSet(b,0,0,cvmGet(V2,5,0));
+    cvmSet(b,1,0,cvmGet(V2,5,1));
+    cvmSet(b,2,0,cvmGet(V2,5,2));
+    cvmSet(b,3,0,cvmGet(V2,5,3));
+    cvmSet(b,4,0,cvmGet(V2,5,4));
+    cvmSet(b,5,0,cvmGet(V2,5,5));
+    // setup B
+    cvmSet(B,0,0,cvmGet(b,0,0));
+    cvmSet(B,0,1,cvmGet(b,1,0));
+    cvmSet(B,1,0,cvmGet(b,1,0));
+    cvmSet(B,1,1,cvmGet(b,2,0));
+    cvmSet(B,0,2,cvmGet(b,3,0));
+    cvmSet(B,2,0,cvmGet(b,3,0));
+    cvmSet(B,1,2,cvmGet(b,4,0));
+    cvmSet(B,2,1,cvmGet(b,4,0));
+    cvmSet(B,2,2,cvmGet(b,5,0));
+    // estimate intrinsic parameters
+//    CvMat* K = cvCreateMat(3,3,CV_64FC1);
+    CvMat* Kinv = cvCreateMat(3,3,CV_64FC1);
+    double vo = (cvmGet(B,0,1)*cvmGet(B,0,2)-cvmGet(B,0,0)*cvmGet(B,1,2))/(cvmGet(B,0,0)*cvmGet(B,1,1)-
+                                                                           cvmGet(B,0,1)*cvmGet(B,0,1));
+    double lamda = cvmGet(B,2,2)-(cvmGet(B,0,2)*cvmGet(B,0,2)+vo*(cvmGet(B,0,1)*cvmGet(B,0,2)-
+                                                                  cvmGet(B,0,0)*cvmGet(B,1,2)))/cvmGet(B,0,0);
+    double alpha = sqrt(lamda/cvmGet(B,0,0));
+    double beta = sqrt(lamda*cvmGet(B,0,0)/(cvmGet(B,0,0)*cvmGet(B,1,1)-cvmGet(B,0,1)*cvmGet(B,0,1)));
+    double gamma = -cvmGet(B,0,1)*alpha*alpha*beta/lamda;
+    double uo = gamma*vo/beta-cvmGet(B,0,2)*alpha*alpha/lamda;
+    cvmSet(K,0,0,alpha);
+    cvmSet(K,0,1,gamma);
+    cvmSet(K,0,2,uo);
+    cvmSet(K,1,0,0);
+    cvmSet(K,1,1,beta);
+    cvmSet(K,1,2,vo);
+    cvmSet(K,2,0,0);
+    cvmSet(K,2,1,0);
+    cvmSet(K,2,2,1);
+    cvInvert(K,Kinv);
+    
+    // estimate extrinsic parameters
+    CvMat* h1 = cvCreateMat(3,1,CV_64FC1);
+    CvMat* h2 = cvCreateMat(3,1,CV_64FC1);
+    CvMat* h3 = cvCreateMat(3,1,CV_64FC1);
+    CvMat* r1 = cvCreateMat(3,1,CV_64FC1);
+    CvMat* r2 = cvCreateMat(3,1,CV_64FC1);
+    CvMat* r3 = cvCreateMat(3,1,CV_64FC1);
+    CvMat* t = cvCreateMat(3,1,CV_64FC1);
+    CvMat* Q = cvCreateMat(3,3,CV_64FC1);
+    CvMat* R = cvCreateMat(3,3,CV_64FC1);
+    CvMat* UU = cvCreateMat(3,3,CV_64FC1);
+    CvMat* DD = cvCreateMat(3,3,CV_64FC1);
+    CvMat* VV = cvCreateMat(3,3,CV_64FC1);
+    CvMat* Vt = cvCreateMat(3,3,CV_64FC1);
+    CvMat* Rt[n_images];
+    
+    float lamda1;
+    for(int i=0;i<n_images;i++)
+    {
+        
+        Rt[i] = cvCreateMat(3,4,CV_64FC1);
+        // setup column vector h1,h2,h3 from H[i]
+        cvmSet(h1,0,0,cvmGet(homographies[i],0,0));
+        cvmSet(h1,1,0,cvmGet(homographies[i],1,0));
+        cvmSet(h1,2,0,cvmGet(homographies[i],2,0));
+        cvmSet(h2,0,0,cvmGet(homographies[i],0,1));
+        cvmSet(h2,1,0,cvmGet(homographies[i],1,1));
+        cvmSet(h2,2,0,cvmGet(homographies[i],2,1));
+        cvmSet(h3,0,0,cvmGet(homographies[i],0,2));
+        cvmSet(h3,1,0,cvmGet(homographies[i],1,2));
+        cvmSet(h3,2,0,cvmGet(homographies[i],2,2));
+        // estimate the rotation matrix R and the translation vector t
+        cvMatMul(Kinv,h1,r1);
+        cvMatMul(Kinv,h2,r2);
+        cvMatMul(Kinv,h3,t);
+        lamda1=1/sqrt(pow(cvmGet(r1,0,0),2)+pow(cvmGet(r1,1,0),2)+pow(cvmGet(r1,2,0),2));
+        cvmSet(r1,0,0,cvmGet(r1,0,0)*lamda1);
+        cvmSet(r1,1,0,cvmGet(r1,1,0)*lamda1);
+        cvmSet(r1,2,0,cvmGet(r1,2,0)*lamda1);
+        cvmSet(r2,0,0,cvmGet(r2,0,0)*lamda1);
+        cvmSet(r2,1,0,cvmGet(r2,1,0)*lamda1);
+        cvmSet(r2,2,0,cvmGet(r2,2,0)*lamda1);
+        cvmSet(t,0,0,cvmGet(t,0,0)*lamda1);
+        cvmSet(t,1,0,cvmGet(t,1,0)*lamda1);
+        cvmSet(t,2,0,cvmGet(t,2,0)*lamda1);
+        cvCrossProduct(r1,r2,r3);
+        cvmSet(Q,0,0,cvmGet(r1,0,0));
+        cvmSet(Q,1,0,cvmGet(r1,1,0));
+        cvmSet(Q,2,0,cvmGet(r1,2,0));
+        cvmSet(Q,0,1,cvmGet(r2,0,0));
+        cvmSet(Q,1,1,cvmGet(r2,1,0));
+        cvmSet(Q,2,1,cvmGet(r2,2,0));
+        cvmSet(Q,0,2,cvmGet(r3,0,0));
+        cvmSet(Q,1,2,cvmGet(r3,1,0));
+        cvmSet(Q,2,2,cvmGet(r3,2,0));
+        // Refine Q become orthogonal matrix R
+        cvSVD(Q, DD, UU, VV, CV_SVD_V_T);
+        cvMatMul(UU,VV,R);
+        // Rt matrix
+        cvmSet(Rt[i],0,0,cvmGet(R,0,0));
+        cvmSet(Rt[i],1,0,cvmGet(R,1,0));
+        cvmSet(Rt[i],2,0,cvmGet(R,2,0));
+        cvmSet(Rt[i],0,1,cvmGet(R,0,1));
+        cvmSet(Rt[i],1,1,cvmGet(R,1,1));
+        cvmSet(Rt[i],2,1,cvmGet(R,2,1));
+        cvmSet(Rt[i],0,2,cvmGet(R,0,2));
+        cvmSet(Rt[i],1,2,cvmGet(R,1,2));
+        cvmSet(Rt[i],2,2,cvmGet(R,2,2));
+        cvmSet(Rt[i],0,3,cvmGet(t,0,0));
+        cvmSet(Rt[i],1,3,cvmGet(t,1,0));
+        cvmSet(Rt[i],2,3,cvmGet(t,2,0));
+    }
+    
+    print_cvMatrix(K, "Initial Camera matrix");
+    
+    double dtdrefined[n_images], dtd[n_images];
+    //calcular errores geometricos iniciales
+    for(int i=0;i<n_images;i++)
+    {
+        dtd[i]= Residuals(Rt[i],K,ObjectPoints,ImgPoints);
+    }
+    //refinamiento de parametros
+    bool all = 1;
+    if (!all)
+    {
+        // Refine Parameters
+        CvMat* estK = cvCreateMat(3,3,CV_64FC1);
+//        CvMat* k_distorts = cvCreateMat(2,1,CV_64FC1);
+        ofstream myfile;
+        myfile.open (PATH_RESULTS+"LM_refinements.csv");
+        set_headers(myfile);
+        
+        for(int i=0;i<n_images;i++)
+        {
+            RefineCamera(Rt[i],K,estK,ObjectPoints,ImgPoints, myfile);
+            //error geometrico por imagen
+            dtdrefined[i] = Residuals(Rt[i],estK,ObjectPoints,ImgPoints);
+            save_refinements_parameters_add_row(myfile, i, estK,Rt[i], dtdrefined[i]);
+            cout<<"error refinado: "<<dtdrefined[i]<<endl;
+        }
+        myfile.close();
+        calculateRadialDistortion(Rt,estK,image_points,ObjectPoints,REAL_NUM_CTRL_PTS, n_images,distortions);
+        print_cvMatrix(distortions, "Radial distortion: ");
+        
+        //calcular mejora: Improvement = ( sum of initial errors ) / (sum of refined errors)
+        double n=0;
+        double d=0;
+        for(int i=0;i<n_images;i++){
+            n = n + dtdrefined[i];
+            d = d+dtd[i];
+        }
+        cout<<"Mejora: "<<n/d<<endl;
+    }
+    else{
+        CvMat* estK = cvCreateMat(3,3,CV_64FC1);
+        ofstream myfile;
+        
+        RefineCameraAll(Rt, K, estK, ObjectPoints, ImgPoints, myfile, n_images,error0, error);
+        
+        //        double rms = computeReprojectionErrors(Rt, estK, ObjectPoints, control_poits_images, n_images);
+        //        cout<<"mi rms all: "<<rms<<endl;
+        //calcular mejora: Improvement = ( sum of initial errors ) / (sum of refined errors)
+        print_cvMatrix(K, "My camera matrix");
+        improv = sqrt(error/error0);
+        cout<<"Mejora: "<<improv<<endl;
+    }
+    return error;
+}
+
+void my_calibrate_camera( vector<Mat> selected_frames, vector<Point3f> real_centers){
+   
+    vector<P_Ellipse> control_points;
+    Mat output_img_control_points, img_prep_out;
     
     int n_images = (int)selected_frames.size();
     
@@ -807,7 +1091,7 @@ void my_calibrate_camera( vector<Mat> selected_frames, vector<Point3f> real_cent
             cout<<"error refinado: "<<dtdrefined[i]<<endl;
         }
         myfile.close();
-        calculateRadialDistortion(Rt,estK,control_poits_images,real_centers,REAL_NUM_CTRL_PTS, n_images,k_distorts);
+        calculateRadialDistortion(Rt,estK,control_poits_images,ObjectPoints,REAL_NUM_CTRL_PTS, n_images,k_distorts);
         print_cvMatrix(k_distorts, "Radial distortion: ");
         
         //calcular mejora: Improvement = ( sum of initial errors ) / (sum of refined errors)
@@ -838,7 +1122,8 @@ void my_calibrate_camera( vector<Mat> selected_frames, vector<Point3f> real_cent
     }
     
 }
-void calculateRadialDistortion(CvMat* Rt[],CvMat* K,vector<vector<Point2f>> control_poits_images,vector<Point3f> real_centers,int N, int M,
+
+void calculateRadialDistortion(CvMat* Rt[],CvMat* K,vector<vector<Point2f>> control_poits_images,CvMat* ObjectPoints,int N, int M,
                                CvMat* k_distorts){
     
     CvMat* D = cvCreateMat(2*M*N,2,CV_64FC1);
@@ -858,8 +1143,10 @@ void calculateRadialDistortion(CvMat* Rt[],CvMat* K,vector<vector<Point2f>> cont
     {
         for(int i = 0; i< N; i++) //para cada punto de control
         {
-            X = real_centers[i].x;
-            Y = real_centers[i].y;
+//            X = real_centers[i].x;
+//            Y = real_centers[i].y;
+            X = cvmGet(ObjectPoints, 0, i);
+            Y = cvmGet(ObjectPoints, 1, i);;
             cvmSet(XYZW,0,0,X);
             cvmSet(XYZW,1,0,Y);
             cvmSet(XYZW,2,0,Z);
@@ -1023,7 +1310,7 @@ int main()
     //string path_data = "/Users/davidchoqueluqueroman/Desktop/CURSOS-MASTER/IMAGENES/testOpencv/data/";
 //    string video_file = PATH_DATA+"cam1/anillos.mp4";
     // string video_file = "data/padron2.avi";
-        string video_file = PATH_DATA+"cam1/anillos.mp4";
+        string video_file = PATH_DATA+"cam2/anillos.mp4";
     
     
     VideoCapture cap;
@@ -1086,6 +1373,15 @@ int main()
             break;
         }
     }
+    ofstream myfile_resulr_ref, myfile_mycameracalib;
+    myfile_resulr_ref.open (PATH_RESULTS+"result_refinements.csv");
+    myfile_mycameracalib.open (PATH_RESULTS+"result_mycalib.csv");
+    
+    set_headers_refinement(myfile_resulr_ref);
+    set_headers_refinement(myfile_mycameracalib,"improv");
+    CvMat* K = cvCreateMat(3, 3, CV_64FC1);
+    CvMat* k_distorts = cvCreateMat(2,1,CV_64FC1);
+    double my_rms,improv;
     
     if(imagePoints.size()==selected_frames.size()){
         cout << "First calibration... \n";
@@ -1094,9 +1390,15 @@ int main()
         cout << "distCoeffs " << distCoeffs << endl;
         cout << "rms: " << rms << endl;
         rms_first = rms;
+        
+        save_camera_parameters(myfile_resulr_ref, 0, cameraMatrix, rms);
+        
         rmss.push_back(rms);
         cameraMatrix_first = cameraMatrix.clone();
         distCoeffs_first = distCoeffs;
+        my_rms = my_calibrate_camera(imagePoints,K, k_distorts, improv);
+        save_camera_parameters(myfile_mycameracalib, 0, K, my_rms, improv);
+        
     }
     //
     /************************ Points Refinement **********************************/
@@ -1106,7 +1408,7 @@ int main()
     for(int i=0; i<No_ITER;i++){
         fronto_images.clear();
         imagePoints.clear();
-        fronto_parallel_images(selected_frames,fronto_images,frameSize,real_centers, cameraMatrix, distCoeffs,imagePoints,i);
+        fronto_parallel_images(selected_frames,fronto_images,frameSize,real_centers, cameraMatrix, distCoeffs,imagePoints,i, BARICENTER,false);
         cout<<"imagePoints.size(): "<<imagePoints.size()<<endl;
         /************************ Calibrate camera **********************************/
         // cameraMatrix.release();
@@ -1119,8 +1421,13 @@ int main()
             cout << "cameraMatrix " << cameraMatrix << endl;
             cout << "distCoeffs " << distCoeffs << endl;
             cout << "rms: " << rms << endl;
+            save_camera_parameters(myfile_resulr_ref, i, cameraMatrix, rms);
+            my_rms = my_calibrate_camera(imagePoints,K, k_distorts, improv);
+            save_camera_parameters(myfile_mycameracalib, i, K, my_rms, improv);
         }
     }
+    myfile_resulr_ref.close();
+    myfile_mycameracalib.close();
 //    save_rmss(selected_frames.size(),rmss);
 //
     // //    debug_images_fronto();
