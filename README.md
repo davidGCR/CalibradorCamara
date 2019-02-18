@@ -19,8 +19,11 @@ g++ -ggdb `pkg-config --cflags opencv` -o `basename test1.cpp .cpp` test1.cpp `p
 # Pipeline General
 ![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/pipeline_calibrador.png?raw=true "Title")
 
-## Resultados: 
-![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/Captura de pantalla 2019-02-18 a la(s) 03.25.24.png?raw=true "Title")
+# Vista General
+![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/GeneralPicture.png?raw=true "Title")
+
+## Resultados: Preprocesamiento, Deteccion y Seguimiento de puntos de control
+![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/pre-detect-track.png?raw=true "Title")
 
 
       
