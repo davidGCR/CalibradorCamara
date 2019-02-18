@@ -24,13 +24,11 @@ Requirements:
 To run the code:
 
 - Clone o download the source code.
+- Download the test videos from : https://drive.google.com/open?id=1sflgm5tMdCjtriVWZmNSOreaXoliZ-ot
+- Save the videos on "data/" on repository folder.
 - Open a terminal in the repository folder.
-- Compile with the command:
-g++ -ggdb main.cpp class/cameraCalib.h class/utils.h class/iterativeCalibFunctions.h class/ellipse.h class/Line.h class/constants.h class/quadrant.h class/controlPointDetector.h class/display.h class/preprocessing.h -o main -std=c++11 `pkg-config --cflags --libs opencv`
-
-or write "make"
-- Run with the command:
-./main
+- Write "make" in the console.
+- Run with the command: ./main
 
 # 1. Pipeline
 ![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/pipeline_calibrador.png?raw=true "Title")
