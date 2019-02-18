@@ -17,6 +17,8 @@ g++ -ggdb `pkg-config --cflags opencv` -o `basename test1.cpp .cpp` test1.cpp `p
 ./test1
 
 # Pipeline General
+![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/pipeline_calibrador.png?raw=true "Title")
+
 [[https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/pipeline_calibrador.png|alt=pipeline_calibrador]]
 
 # Fuentes
