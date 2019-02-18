@@ -11,7 +11,9 @@ A method for camera calibration using rings pattern an OpenCV, based on:
 [[https://davidgcr.github.io/CalibradorCamara/]]
 
 ### Video Demo
-https://youtu.be/f9BiisoXgWY
+<iframe width="787" height="578" src="https://youtu.be/f9BiisoXgWY" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+
 
 ### Students: 
 - Diego Javier Quispe 
