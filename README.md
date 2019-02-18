@@ -38,6 +38,10 @@ g++ -ggdb `pkg-config --cflags opencv` -o `basename test1.cpp .cpp` test1.cpp `p
 ## 3.5 Refinamiento de Puntos de Control
 ![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/refinement.png?raw=true "Title")
 
+## 3.6 Comparacion de Refinamientos
+![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/refinement-plot-c1.png?raw=true "Title")
+![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/refinement-plot-c2.png?raw=true "Title")
+
 
 # Fuentes
 - [1] Zhengyou Zhang,“A Flexible New Technique for Camera Calibration”,2000.
