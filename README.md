@@ -27,7 +27,12 @@ g++ -ggdb `pkg-config --cflags opencv` -o `basename test1.cpp .cpp` test1.cpp `p
 
 # Resultados: Correccion de distorsion
 ![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/undistord_remap.png?raw=true "Title")
-      
+
+# Resultados: Tiempo y Precision
+![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/time-acc.png?raw=true "Title")
+
+# Resultados: Comparacion de calibracion con otros patrones y OpenCV
+![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/c1-c2-accuracy.png?raw=true "Title")
 
 
 # Fuentes
