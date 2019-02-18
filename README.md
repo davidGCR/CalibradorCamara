@@ -10,6 +10,9 @@ A method for camera calibration using rings pattern an OpenCV, based on:
 
 [[https://davidgcr.github.io/CalibradorCamara/]]
 
+### Video Demo
+https://youtu.be/f9BiisoXgWY
+
 ### Students: 
 - Diego Javier Quispe 
 - David Choqueluque Roman
