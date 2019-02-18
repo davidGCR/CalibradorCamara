@@ -16,6 +16,9 @@ g++ -ggdb `pkg-config --cflags opencv` -o `basename test1.cpp .cpp` test1.cpp `p
 - Ejecute la aplicacion con el comando:
 ./test1
 
+# Pipeline General
+[[https://github.com/username/repository/blob/master/img/octocat.png|alt=octocat]]
+
 # Fuentes
 - [1] Zhengyou Zhang,“A Flexible New Technique for Camera Calibration”,2000.
 - [2] Ankur Datta, “Accurate Camera Calibration using Iterative Refinement of Control Points”, 2009.
