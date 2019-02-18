@@ -49,6 +49,7 @@ To run the code:
 ![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/undistord_remap.png?raw=true "Title")
 
 ## 3.3 Time and Accuracy test
+Our method improve the time and accuracy in pattern detection.
 ![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/time-acc.png?raw=true "Title")
 
 ## 3.4 Compare with other  OpenCV calibrations
