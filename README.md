@@ -16,16 +16,17 @@ g++ -ggdb `pkg-config --cflags opencv` -o `basename test1.cpp .cpp` test1.cpp `p
 - Ejecute la aplicacion con el comando:
 ./test1
 
-# Pipeline General
+# Pipeline
 ![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/pipeline_calibrador.png?raw=true "Title")
 
 # Vista General
 ![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/GeneralPicture.png?raw=true "Title")
 
-## Resultados: Preprocesamiento, Deteccion y Seguimiento de puntos de control
+# Resultados: Preprocesamiento, Deteccion y Seguimiento de puntos de control
 ![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/pre-detect-track.png?raw=true "Title")
 
-
+# Resultados: Correccion de distorsion
+![Alt text](https://github.com/davidGCR/CalibradorCamara/blob/master/results/images/undistord_remap.png?raw=true "Title")
       
 
 
